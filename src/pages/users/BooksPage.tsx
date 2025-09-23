@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import toast, { Toaster } from 'react-hot-toast';
 import UserHeader from '../../components/users/UserHeader';
-import { Search, Filter, Book, ChevronLeft, ChevronRight, Loader2, AlertCircle } from 'lucide-react';
+import { Search, Filter, Book, ChevronLeft, ChevronRight, Loader2, AlertCircle, Calendar } from 'lucide-react';
 
 interface BookData {
   id: number;
@@ -48,6 +51,7 @@ const BooksPage: React.FC = () => {
   const [showBorrowModal, setShowBorrowModal] = useState(false);
   const [selectedBookId, setSelectedBookId] = useState<number | null>(null);
   const [returnDate, setReturnDate] = useState('');
+  const [selectedReturnDate, setSelectedReturnDate] = useState<Date | null>(null);
 
   const handleLogout = () => {
     localStorage.removeItem('authToken');
@@ -63,22 +67,17 @@ const BooksPage: React.FC = () => {
       // Ensure all parameters are valid
       const safePage = Math.max(1, Math.floor(Number(page)) || 1);
       const safePageSize = Math.max(1, Math.floor(Number(pageSize)) || 12);
-      const apiPage = safePage - 1; // API uses 0-based indexing (should be >= 0)
       
       console.log('Fetching books with params:', { 
         originalPage: page, 
         safePage, 
-        apiPage, 
         pageSize: safePageSize,
         query: query || '', 
         sort: sort || 'createdAt' 
       });
       
-      // Double-check that apiPage is never negative
-      const finalApiPage = Math.max(1, apiPage);
-      
       const params = new URLSearchParams({
-        page: finalApiPage.toString(),
+        page: safePage.toString(), // Send 1-based page directly
         size: safePageSize.toString(),
         sortBy: sort || 'createdAt',
         sortOrder: 'desc'
@@ -112,7 +111,9 @@ const BooksPage: React.FC = () => {
         throw new Error(result.message || 'Failed to fetch books');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch books');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch books';
+      setError(errorMessage);
+      toast.error(errorMessage);
       setBooks([]);
     } finally {
       setLoading(false);
@@ -138,19 +139,22 @@ const BooksPage: React.FC = () => {
   const handleBorrowClick = (bookId: number) => {
     setSelectedBookId(bookId);
     setReturnDate('');
+    setSelectedReturnDate(null);
     setShowBorrowModal(true);
   };
 
   const handleBorrowConfirm = async () => {
-    if (!selectedBookId || !returnDate) {
-      setError('Please select a return date');
+    if (!selectedBookId || !selectedReturnDate) {
+      const errorMessage = 'Please select a return date';
+      setError(errorMessage);
+      toast.error(errorMessage);
       return;
     }
 
     try {
       const token = localStorage.getItem('authToken');
       const borrowData = {
-        returnDate: returnDate,
+        returnDate: selectedReturnDate.toISOString().split('T')[0], // Format as YYYY-MM-DD
         books: {
           id: selectedBookId
         },
@@ -174,6 +178,9 @@ const BooksPage: React.FC = () => {
         setShowBorrowModal(false);
         setSelectedBookId(null);
         setReturnDate('');
+        setSelectedReturnDate(null);
+        setError(null); // Clear any previous errors
+        toast.success('Book borrowed successfully!');
         // Refresh books after successful borrow
         fetchBooks(currentPage, searchQuery, sortBy);
       } else {
@@ -181,7 +188,9 @@ const BooksPage: React.FC = () => {
         throw new Error(errorData.message || 'Failed to borrow book');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to borrow book');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to borrow book';
+      setError(errorMessage);
+      toast.error(errorMessage);
     }
   };
 
@@ -189,10 +198,47 @@ const BooksPage: React.FC = () => {
     setShowBorrowModal(false);
     setSelectedBookId(null);
     setReturnDate('');
+    setSelectedReturnDate(null);
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      {/* Toast Container */}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#fff',
+            color: '#374151',
+            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+            border: '1px solid #e5e7eb',
+            borderRadius: '12px',
+            padding: '16px',
+            fontSize: '14px',
+            fontWeight: '500',
+          },
+          success: {
+            iconTheme: {
+              primary: '#10b981',
+              secondary: '#fff',
+            },
+            style: {
+              border: '1px solid #10b981',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: '#fff',
+            },
+            style: {
+              border: '1px solid #ef4444',
+            },
+          },
+        }}
+      />
+
       {/* Header with Navigation Tabs */}
       <UserHeader 
         username={user?.username || 'User'} 
@@ -251,16 +297,22 @@ const BooksPage: React.FC = () => {
           {pageInfo && (
             <div className="mb-6">
               <p className="text-sm text-gray-600">
-                Showing {pageInfo.size * pageInfo.number + 1} - {Math.min(pageInfo.size * (pageInfo.number + 1), pageInfo.totalElements)} of {pageInfo.totalElements} books
+                Showing {pageInfo.size * (pageInfo.number - 1) + 1} - {Math.min(pageInfo.size * pageInfo.number, pageInfo.totalElements)} of {pageInfo.totalElements} books
               </p>
             </div>
           )}
 
-          {/* Error Message */}
+          {/* Error Message - Keep for critical errors */}
           {error && (
             <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-center">
               <AlertCircle className="h-5 w-5 text-red-500 mr-3" />
               <span className="text-red-700">{error}</span>
+              <button 
+                onClick={() => setError(null)}
+                className="ml-auto text-red-500 hover:text-red-700"
+              >
+                ×
+              </button>
             </div>
           )}
 
@@ -430,46 +482,86 @@ const BooksPage: React.FC = () => {
 
       {/* Borrow Modal */}
       {showBorrowModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4 border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Borrow Book</h3>
-            <p className="text-sm text-gray-600 mb-6">
-              Please select a return date for this book:
-            </p>
-            
-            <div className="mb-6">
-              <label htmlFor="returnDate" className="block text-sm font-medium text-gray-700 mb-2">
-                Return Date
-              </label>
-              <input
-                type="date"
-                id="returnDate"
-                value={returnDate}
-                onChange={(e) => setReturnDate(e.target.value)}
-                min={new Date().toISOString().split('T')[0]} // Minimum date is today
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                required
-              />
+        <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto border border-gray-100 relative" style={{ zIndex: 10000, overflow: 'visible' }}>
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 rounded-t-2xl">
+              <div className="flex items-center">
+                <Book className="h-6 w-6 text-white mr-3" />
+                <h3 className="text-xl font-bold text-white">Borrow Book</h3>
+              </div>
             </div>
+            
+            {/* Modal Content */}
+            <div className="p-6" style={{ overflow: 'visible' }}>
+              <div className="mb-6">
+                <p className="text-gray-600 text-sm leading-relaxed">
+                  Please select when you plan to return this book. Remember to return it on time to avoid late fees.
+                </p>
+              </div>
+              
+              <div className="mb-6" style={{ overflow: 'visible' }}>
+                <label className="flex items-center text-sm font-semibold text-gray-800 mb-3">
+                  <Calendar className="h-4 w-4 mr-2 text-orange-500" />
+                  Return Date <span className="text-red-500 ml-1">*</span>
+                </label>
+                
+                <div className="relative" style={{ zIndex: 10003, overflow: 'visible' }}>
+                  <DatePicker
+                    selected={selectedReturnDate}
+                    onChange={(date: Date | null) => setSelectedReturnDate(date)}
+                    minDate={new Date()}
+                    maxDate={new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)}
+                    dateFormat="EEEE, MMMM dd, yyyy"
+                    placeholderText="Click to select return date"
+                    className="w-full px-4 py-3 text-gray-900 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 font-medium text-center"
+                    wrapperClassName="w-full"
+                    todayButton="Select Today"
+                    showPopperArrow={false}
+                    popperClassName="!z-[10004] !important"
+                    popperPlacement="bottom"
+                    fixedHeight
+                    onCalendarOpen={() => {
+                      // Ensure calendar is above everything
+                      const calendar = document.querySelector('.react-datepicker');
+                      if (calendar) {
+                        (calendar as HTMLElement).style.zIndex = '10005';
+                      }
+                    }}
+                  />
+                </div>
+                
+                <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-xs text-amber-700 flex items-center">
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    Maximum borrowing period is 90 days from today
+                  </p>
+                </div>
+              </div>
 
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={handleBorrowCancel}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleBorrowConfirm}
-                disabled={!returnDate}
-                className="px-4 py-2 text-sm font-medium text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
-              >
-                Confirm Borrow
-              </button>
+              {/* Action Buttons */}
+              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-100">
+                <button
+                  onClick={handleBorrowCancel}
+                  className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleBorrowConfirm}
+                  disabled={!selectedReturnDate}
+                  className="px-5 py-2.5 text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-300 shadow-lg hover:shadow-xl disabled:shadow-none"
+                >
+                  Confirm Borrow
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* Portal container for DatePicker */}
+      <div id="date-picker-portal"></div>
     </div>
   );
 };
