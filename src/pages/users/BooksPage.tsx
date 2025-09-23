@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import toast, { Toaster } from 'react-hot-toast';
+import { showToast } from '../../utils/toast';
 import UserHeader from '../../components/users/UserHeader';
 import { Search, Filter, Book, ChevronLeft, ChevronRight, Loader2, AlertCircle, Calendar } from 'lucide-react';
 
@@ -36,6 +36,41 @@ interface BooksResponse {
   success: boolean;
 }
 
+interface MembershipData {
+  id: number;
+  membershipType: string;
+  membershipStatus: string;
+  dateOfIssue: string;
+  expiryDate: string;
+  borrowingLimit: number;
+  createdAt: string | null;
+  updatedAt: string;
+}
+
+interface MembershipResponse {
+  data: MembershipData;
+  message: string;
+  status: number;
+  success: boolean;
+}
+
+interface ReservationResponse {
+  data: {
+    id: number;
+    bookId: number;
+    bookTitle: string;
+    memberId: number;
+    memberName: string;
+    reservationDate: string;
+    notificationDate: string | null;
+    expiryDate: string | null;
+    status: string;
+  };
+  message: string;
+  status: number;
+  success: boolean;
+}
+
 const BooksPage: React.FC = () => {
   const userStr = localStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : null;
@@ -52,6 +87,8 @@ const BooksPage: React.FC = () => {
   const [selectedBookId, setSelectedBookId] = useState<number | null>(null);
   const [returnDate, setReturnDate] = useState('');
   const [selectedReturnDate, setSelectedReturnDate] = useState<Date | null>(null);
+  const [membership, setMembership] = useState<MembershipData | null>(null);
+  const [reservingBookId, setReservingBookId] = useState<number | null>(null);
 
   const handleLogout = () => {
     localStorage.removeItem('authToken');
@@ -113,41 +150,86 @@ const BooksPage: React.FC = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch books';
       setError(errorMessage);
-      toast.error(errorMessage);
+      showToast.error(errorMessage);
       setBooks([]);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    // Ensure we start with a valid page number
-    const validPage = Math.max(1, currentPage);
-    if (validPage !== currentPage) {
-      setCurrentPage(validPage);
-    } else {
-      fetchBooks(validPage, searchQuery, sortBy);
-    }
-  }, [currentPage, sortBy]);
+  const fetchMembership = async () => {
+    if (!user?.id) return;
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setCurrentPage(1);
-    fetchBooks(1, searchQuery, sortBy);
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`http://localhost:8080/membership/user/${user.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.status === 404) {
+        setMembership(null);
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result: MembershipResponse = await response.json();
+      
+      if (result.success) {
+        setMembership(result.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch membership:', err);
+    }
   };
 
-  const handleBorrowClick = (bookId: number) => {
-    setSelectedBookId(bookId);
-    setReturnDate('');
-    setSelectedReturnDate(null);
-    setShowBorrowModal(true);
+  const reserveBook = async (bookId: number) => {
+    if (!membership) {
+      showToast.error('No valid membership found');
+      return;
+    }
+
+    setReservingBookId(bookId);
+
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`http://localhost:8080/reservation/book/${bookId}/member/${membership.id}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result: ReservationResponse = await response.json();
+      
+      if (result.success) {
+        showToast.success('Book reserved successfully!');
+      } else {
+        throw new Error(result.message || 'Failed to reserve book');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to reserve book';
+      showToast.error(errorMessage);
+    } finally {
+      setReservingBookId(null);
+    }
   };
 
   const handleBorrowConfirm = async () => {
     if (!selectedBookId || !selectedReturnDate) {
       const errorMessage = 'Please select a return date';
       setError(errorMessage);
-      toast.error(errorMessage);
+      showToast.error(errorMessage);
       return;
     }
 
@@ -180,7 +262,7 @@ const BooksPage: React.FC = () => {
         setReturnDate('');
         setSelectedReturnDate(null);
         setError(null); // Clear any previous errors
-        toast.success('Book borrowed successfully!');
+        showToast.success('Book borrowed successfully!');
         // Refresh books after successful borrow
         fetchBooks(currentPage, searchQuery, sortBy);
       } else {
@@ -190,7 +272,7 @@ const BooksPage: React.FC = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to borrow book';
       setError(errorMessage);
-      toast.error(errorMessage);
+      showToast.error(errorMessage);
     }
   };
 
@@ -201,44 +283,35 @@ const BooksPage: React.FC = () => {
     setSelectedReturnDate(null);
   };
 
+  useEffect(() => {
+    // Ensure we start with a valid page number
+    const validPage = Math.max(1, currentPage);
+    if (validPage !== currentPage) {
+      setCurrentPage(validPage);
+    } else {
+      fetchBooks(validPage, searchQuery, sortBy);
+    }
+  }, [currentPage, sortBy]);
+
+  useEffect(() => {
+    fetchMembership();
+  }, [currentPage, sortBy]);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCurrentPage(1);
+    fetchBooks(1, searchQuery, sortBy);
+  };
+
+  const handleBorrowClick = (bookId: number) => {
+    setSelectedBookId(bookId);
+    setReturnDate('');
+    setSelectedReturnDate(null);
+    setShowBorrowModal(true);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      {/* Toast Container */}
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: '#fff',
-            color: '#374151',
-            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-            border: '1px solid #e5e7eb',
-            borderRadius: '12px',
-            padding: '16px',
-            fontSize: '14px',
-            fontWeight: '500',
-          },
-          success: {
-            iconTheme: {
-              primary: '#10b981',
-              secondary: '#fff',
-            },
-            style: {
-              border: '1px solid #10b981',
-            },
-          },
-          error: {
-            iconTheme: {
-              primary: '#ef4444',
-              secondary: '#fff',
-            },
-            style: {
-              border: '1px solid #ef4444',
-            },
-          },
-        }}
-      />
-
       {/* Header with Navigation Tabs */}
       <UserHeader 
         username={user?.username || 'User'} 
@@ -356,13 +429,42 @@ const BooksPage: React.FC = () => {
                       )}
                     </div>
                     
-                    <button
-                      onClick={() => handleBorrowClick(book.id)}
-                      disabled={!book.isAvailable || (book.availableCopies !== null && book.availableCopies === 0)}
-                      className="w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-orange-500 hover:bg-orange-600 text-white"
-                    >
-                      {book.isAvailable && (book.availableCopies === null || book.availableCopies > 0) ? 'Borrow Book' : 'Not Available'}
-                    </button>
+                    {/* Action Buttons */}
+                    <div className="space-y-2">
+                      {/* Primary Action Button */}
+                      <button
+                        onClick={() => handleBorrowClick(book.id)}
+                        disabled={!book.isAvailable || (book.availableCopies !== null && book.availableCopies === 0)}
+                        className="w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-orange-500 hover:bg-orange-600 text-white"
+                      >
+                        {book.isAvailable && (book.availableCopies === null || book.availableCopies > 0) ? 'Borrow Book' : 'Not Available'}
+                      </button>
+                      
+                      {/* Reserve Button - Show when book is not available */}
+                      {(!book.isAvailable || (book.availableCopies !== null && book.availableCopies === 0)) && membership && (
+                        <button
+                          onClick={() => reserveBook(book.id)}
+                          disabled={reservingBookId === book.id}
+                          className="w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                        >
+                          {reservingBookId === book.id ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                              Reserving...
+                            </>
+                          ) : (
+                            'Reserve Book'
+                          )}
+                        </button>
+                      )}
+                      
+                      {/* No Membership Message */}
+                      {(!book.isAvailable || (book.availableCopies !== null && book.availableCopies === 0)) && !membership && (
+                        <p className="text-xs text-gray-500 text-center">
+                          Membership required to reserve
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}

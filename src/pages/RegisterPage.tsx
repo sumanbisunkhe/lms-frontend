@@ -15,6 +15,9 @@ const RegisterPage: React.FC = () => {
     setSuccess(false);
 
     try {
+      // Dismiss any existing toasts first
+      showToast.dismiss();
+      
       const response: RegisterResponse = await authService.register(userData);
       
       if (response.success && response.status === 201) {
@@ -24,8 +27,9 @@ const RegisterPage: React.FC = () => {
         // Redirect to login page after showing success
         setTimeout(() => {
           navigate('/login', { 
+            replace: true,
             state: { 
-              message: 'Account created successfully! Please log in with your credentials.'
+              message: 'Please log in with your credentials.'
             }
           });
         }, 2000);

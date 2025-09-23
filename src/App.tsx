@@ -6,9 +6,10 @@ import UserDashboard from './pages/users/UserDashboard';
 import BooksPage from './pages/users/BooksPage';
 import ReservationPage from './pages/users/ReservationPage';
 import MembershipPage from './pages/users/MembershipPage';
-import RatingsPage from './pages/users/RatingsPage';
+import RatingsPage from './pages/users/RecommendationPage';
 import BorrowsPage from './pages/users/BorrowsPage';
 import './App.css'
+import RecommendationPage from './pages/users/RecommendationPage';
 
 function App() {
   return (
@@ -17,11 +18,11 @@ function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route path="/user-dashboard" element={<UserDashboard />} />
+          <Route path="/user/dashboard" element={<UserDashboard />} />
           <Route path="/user/books" element={<BooksPage />} />
           <Route path="/user/reservation" element={<ReservationPage />} />
           <Route path="/user/membership" element={<MembershipPage />} />
-          <Route path="/user/ratings" element={<RatingsPage />} />
+          <Route path="/user/recommendations" element={<RecommendationPage />} />
           <Route path="/user/borrows" element={<BorrowsPage />} />
           <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>

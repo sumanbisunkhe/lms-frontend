@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Book, Calendar, UserCheck, Star, BookOpen, LogOut, Library, ChevronDown } from 'lucide-react';
+import { Book, Calendar, UserCheck, Star, BookOpen, LogOut, Library, ChevronDown,LayoutDashboard } from 'lucide-react';
 
 interface UserHeaderProps {
     username: string;
@@ -28,6 +28,12 @@ const UserHeader: React.FC<UserHeaderProps> = ({ username, onLogout }) => {
 
     // Define the navigation tabs
     const navigationTabs = [
+
+        {
+            name: 'Dashboard',
+            path: '/user/dashboard',
+            icon: <LayoutDashboard size={20} />
+        },
         {
             name: 'Books',
             path: '/user/books',
@@ -44,8 +50,8 @@ const UserHeader: React.FC<UserHeaderProps> = ({ username, onLogout }) => {
             icon: <UserCheck size={20} />
         },
         {
-            name: 'Ratings',
-            path: '/user/ratings',
+            name: 'Recommendations',
+            path: '/user/recommendations',
             icon: <Star size={20} />
         },
         {
@@ -60,7 +66,7 @@ const UserHeader: React.FC<UserHeaderProps> = ({ username, onLogout }) => {
             <div className="max-w-8xl mx-auto px-6">
                 <div className="flex items-center justify-between h-16">
                     {/* Logo Section */}
-                    <Link to="/user-dashboard" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
+                    <Link to="/user/dashboard" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
                         <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl shadow-md">
                             <Library className="h-6 w-6 text-white" />
                         </div>

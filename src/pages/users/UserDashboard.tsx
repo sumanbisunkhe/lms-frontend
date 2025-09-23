@@ -1,18 +1,78 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import UserHeader from '../../components/users/UserHeader';
-import { 
-  Book, 
-  Calendar, 
-  Star, 
-  Award, 
-  Clock, 
-  CheckCircle2, 
-  AlertCircle
+import { showToast } from '../../utils/toast';
+import {
+  Book,
+  Calendar,
+  Star,
+  Award,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Users,
+  BookOpen,
+  TrendingUp,
+  Loader2
 } from 'lucide-react';
+
+interface BookStats {
+  totalBooks: number;
+  availableBooks: number;
+}
+
+interface BookStatsResponse {
+  data: BookStats;
+  message: string;
+  status: number;
+  success: boolean;
+}
+
+interface MembershipResponse {
+  data: number;
+  message: string;
+  status: number;
+  success: boolean;
+}
+
+interface BookData {
+  id: number;
+  title: string;
+  author: string;
+  publisher: string;
+  isbn: string;
+  genre: string;
+  totalCopies: number;
+  availableCopies: number;
+  isAvailable: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface PageInfo {
+  size: number;
+  number: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+interface DiscoverBooksResponse {
+  data: {
+    content: BookData[];
+    page: PageInfo;
+  };
+  message: string;
+  status: number;
+  success: boolean;
+}
 
 const UserDashboard: React.FC = () => {
   const userStr = localStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : null;
+
+  const [bookStats, setBookStats] = useState<BookStats | null>(null);
+  const [totalMembership, setTotalMembership] = useState<number>(0);
+  const [featuredBooks, setFeaturedBooks] = useState<BookData[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const handleLogout = () => {
     localStorage.removeItem('authToken');
@@ -20,348 +80,316 @@ const UserDashboard: React.FC = () => {
     window.location.href = '/login';
   };
 
+  // Fetch book statistics
+  const fetchBookStats = async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch('http://localhost:8080/book/total-books', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result: BookStatsResponse = await response.json();
+
+      if (result.success) {
+        setBookStats(result.data);
+      } else {
+        throw new Error(result.message || 'Failed to fetch book statistics');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch book statistics';
+      showToast.error(errorMessage);
+    }
+  };
+
+  // Fetch total membership
+  const fetchTotalMembership = async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch('http://localhost:8080/membership/total-membership', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result: MembershipResponse = await response.json();
+
+      if (result.success) {
+        setTotalMembership(result.data);
+      } else {
+        throw new Error(result.message || 'Failed to fetch membership data');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch membership data';
+      showToast.error(errorMessage);
+    }
+  };
+
+  // Fetch featured books
+  const fetchFeaturedBooks = async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const params = new URLSearchParams({
+        page: '1',
+        size: '6',
+        query: '',
+        sortBy: 'createdAt'
+      });
+
+      const response = await fetch(`http://localhost:8080/book/discover?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result: DiscoverBooksResponse = await response.json();
+
+      if (result.success) {
+        setFeaturedBooks(result.data.content.slice(0, 6)); // Take first 6 books
+      } else {
+        throw new Error(result.message || 'Failed to fetch featured books');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch featured books';
+      showToast.error(errorMessage);
+    }
+  };
+
+  useEffect(() => {
+    const fetchAllData = async () => {
+      setLoading(true);
+      await Promise.all([
+        fetchBookStats(),
+        fetchTotalMembership(),
+        fetchFeaturedBooks()
+      ]);
+      setLoading(false);
+    };
+
+    fetchAllData();
+  }, []);
+
+  // Generate book color based on genre
+  const getBookColor = (genre: string) => {
+    const colors = {
+      'Horror': 'from-red-500 to-red-600',
+      'Classic Fiction': 'from-blue-500 to-indigo-600',
+      'Epic Poetry': 'from-purple-500 to-purple-600',
+      'Science Fiction': 'from-green-500 to-teal-600',
+      'Dystopian': 'from-gray-600 to-gray-700',
+      'Existential Fiction': 'from-orange-500 to-orange-600',
+      'default': 'from-slate-500 to-slate-600'
+    };
+    return colors[genre as keyof typeof colors] || colors.default;
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Header with Navigation Tabs */}
-      <UserHeader 
-        username={user?.username || 'User'} 
+      <UserHeader
+        username={user?.username || 'User'}
         onLogout={handleLogout}
       />
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        {/* User Welcome Section */}
-        <div className="px-4 py-6 sm:px-0">
-          <div className="bg-white rounded-lg shadow p-6 mb-6">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800">Welcome to Your Library Portal</h2>
-            <p className="text-gray-600 mb-4">
-              Browse books, manage reservations, and track your borrowing activity all from one place.
-            </p>
-            <div className="bg-blue-50 border border-blue-100 rounded-md p-4">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <AlertCircle className="h-5 w-5 text-blue-400" />
-                </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-blue-800">Account Information</h3>
-                  <div className="mt-2 text-sm text-blue-700">
-                    <ul className="list-disc pl-5 space-y-1">
-                      <li>You are logged in as: <span className="font-semibold">{user?.username}</span></li>
-                      <li>Your role: <span className="font-semibold">{user?.roles?.join(', ')}</span></li>
-                      <li>Membership: <span className="font-semibold">Standard</span></li>
-                    </ul>
+      <main className="pt-20 pb-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* User Welcome Section */}
+          <div className="mb-8">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900">Welcome to Your Library Portal</h2>
+              <p className="text-gray-600 mb-6">
+                Browse books, manage reservations, and track your borrowing activity all from one place.
+              </p>
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-lg p-4">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <AlertCircle className="h-5 w-5 text-blue-500" />
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-semibold text-blue-900">Account Information</h3>
+                    <div className="mt-2 text-sm text-blue-800">
+                      <ul className="list-disc pl-5 space-y-1">
+                        <li>You are logged in as: <span className="font-semibold">{user?.username}</span></li>
+                        <li>Your role: <span className="font-semibold">{user?.roles?.join(', ')}</span></li>
+                        <li>Membership: <span className="font-semibold">Active</span></li>
+                      </ul>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
+
+          {/* Loading State */}
+          {loading && (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <span className="ml-2 text-gray-600">Loading dashboard data...</span>
+            </div>
+          )}
 
           {/* Dashboard Quick Stats */}
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="px-4 py-5 sm:p-6">
+          {!loading && (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <div className="flex items-center">
-                  <div className="flex-shrink-0 bg-blue-500 rounded-md p-3">
-                    <Book className="h-6 w-6 text-white" />
+                  <div className="p-3 bg-blue-100 rounded-lg">
+                    <Book className="h-6 w-6 text-blue-600" />
                   </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Books Borrowed</dt>
-                      <dd className="text-lg font-semibold text-gray-900">2</dd>
-                    </dl>
+                  <div className="ml-4">
+                    <p className="text-sm text-gray-600">Total Books</p>
+                    <p className="text-2xl font-bold text-gray-900">{bookStats?.totalBooks || 0}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center">
+                  <div className="p-3 bg-green-100 rounded-lg">
+                    <BookOpen className="h-6 w-6 text-green-600" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm text-gray-600">Available Books</p>
+                    <p className="text-2xl font-bold text-gray-900">{bookStats?.availableBooks || 0}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center">
+                  <div className="p-3 bg-purple-100 rounded-lg">
+                    <Users className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm text-gray-600">Total Members</p>
+                    <p className="text-2xl font-bold text-gray-900">{totalMembership}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center">
+                  <div className="p-3 bg-yellow-100 rounded-lg">
+                    <TrendingUp className="h-6 w-6 text-yellow-600" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm text-gray-600">Library Activity</p>
+                    <p className="text-2xl font-bold text-gray-900">Active</p>
                   </div>
                 </div>
               </div>
             </div>
+          )}
 
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="px-4 py-5 sm:p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0 bg-green-500 rounded-md p-3">
-                    <Calendar className="h-6 w-6 text-white" />
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Active Reservations</dt>
-                      <dd className="text-lg font-semibold text-gray-900">1</dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="px-4 py-5 sm:p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0 bg-yellow-500 rounded-md p-3">
-                    <Star className="h-6 w-6 text-white" />
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Book Ratings</dt>
-                      <dd className="text-lg font-semibold text-gray-900">8</dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="px-4 py-5 sm:p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0 bg-purple-500 rounded-md p-3">
-                    <Award className="h-6 w-6 text-white" />
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Membership Until</dt>
-                      <dd className="text-lg font-semibold text-gray-900">Jan 15, 2026</dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Recent Activity and Recommended Books */}
-        <div className="px-4 py-6 sm:px-0">
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-1 lg:grid-cols-2">
-            
-            {/* Recent Activities Card */}
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="px-4 py-5 sm:px-6">
-                <h3 className="text-lg leading-6 font-medium text-gray-900">Recent Activities</h3>
-                <p className="mt-1 max-w-2xl text-sm text-gray-500">Your latest library transactions.</p>
-              </div>
-              <div className="border-t border-gray-200">
-                <div className="bg-gray-50 px-4 py-5 sm:p-6">
-                  <div className="space-y-4">
-                    {/* Activity 1 */}
-                    <div className="border-b border-gray-200 pb-4">
-                      <div className="flex justify-between">
-                        <div>
-                          <h4 className="text-base font-medium text-gray-900">The Great Gatsby</h4>
-                          <p className="text-sm text-gray-500">Borrowed on: Oct 15, 2023</p>
-                        </div>
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-sm font-medium bg-yellow-100 text-yellow-800">
-                          <Clock className="h-3.5 w-3.5 mr-1" />
-                          Due in 3 days
+          {/* Featured Books Section */}
+          {!loading && featuredBooks.length > 0 && (
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold mb-6 text-gray-900">Featured Books</h2>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {featuredBooks.map((book) => (
+                  <div key={book.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+                    <div className={`h-40 bg-gradient-to-r ${getBookColor(book.genre)} flex items-center justify-center`}>
+                      <Book className="h-16 w-16 text-white" />
+                    </div>
+                    <div className="p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-1">{book.title}</h3>
+                      <p className="text-sm text-gray-600 mb-2">by {book.author}</p>
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {book.genre}
+                        </span>
+                        <span className="text-sm text-gray-500">
+                          {book.availableCopies}/{book.totalCopies} available
                         </span>
                       </div>
-                      <div className="mt-2 text-sm text-gray-500">
-                        Return by: Oct 29, 2023
-                      </div>
-                    </div>
-                    
-                    {/* Activity 2 */}
-                    <div className="border-b border-gray-200 pb-4">
-                      <div className="flex justify-between">
-                        <div>
-                          <h4 className="text-base font-medium text-gray-900">To Kill a Mockingbird</h4>
-                          <p className="text-sm text-gray-500">Borrowed on: Oct 5, 2023</p>
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm text-gray-500">
+                          <span className="font-medium">Publisher:</span> {book.publisher}
                         </div>
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-sm font-medium bg-green-100 text-green-800">
-                          <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-                          Returned
-                        </span>
+                        <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${book.isAvailable
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                          }`}>
+                          {book.isAvailable ? (
+                            <>
+                              <CheckCircle2 className="w-3 h-3 mr-1" />
+                              Available
+                            </>
+                          ) : (
+                            <>
+                              <AlertCircle className="w-3 h-3 mr-1" />
+                              Unavailable
+                            </>
+                          )}
+                        </div>
                       </div>
-                      <div className="mt-2 text-sm text-gray-500">
-                        Returned on: Oct 19, 2023
-                      </div>
+                      <button
+                        className={`mt-4 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg transition-colors ${book.isAvailable
+                          ? 'text-white bg-blue-600 hover:bg-blue-700'
+                          : 'text-gray-400 bg-gray-100 cursor-not-allowed'
+                          }`}
+                        disabled={!book.isAvailable}
+                      >
+                        {book.isAvailable ? 'View Details' : 'Not Available'}
+                      </button>
                     </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-                    {/* Activity 3 */}
-                    <div>
-                      <div className="flex justify-between">
-                        <div>
-                          <h4 className="text-base font-medium text-gray-900">1984</h4>
-                          <p className="text-sm text-gray-500">Reservation made: Oct 21, 2023</p>
-                        </div>
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-sm font-medium bg-blue-100 text-blue-800">
-                          <AlertCircle className="h-3.5 w-3.5 mr-1" />
-                          Ready for Pickup
-                        </span>
-                      </div>
-                      <div className="mt-2 text-sm text-gray-500">
-                        Available until: Oct 28, 2023
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Recommended Books Card */}
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="px-4 py-5 sm:px-6">
-                <h3 className="text-lg leading-6 font-medium text-gray-900">Recommended Books</h3>
-                <p className="mt-1 max-w-2xl text-sm text-gray-500">Based on your reading history.</p>
-              </div>
-              <div className="border-t border-gray-200">
-                <div className="bg-gray-50 px-4 py-5 sm:p-6">
-                  <div className="space-y-4">
-                    {/* Book 1 */}
-                    <div className="flex items-center border-b border-gray-200 pb-4">
-                      <div className="flex-shrink-0 h-16 w-12 bg-gray-300 rounded">
-                        <div className="h-full w-full flex items-center justify-center text-gray-500">
-                          <Book className="h-8 w-8" />
-                        </div>
-                      </div>
-                      <div className="ml-4">
-                        <h4 className="text-base font-medium text-gray-900">The Catcher in the Rye</h4>
-                        <p className="text-sm text-gray-500">J.D. Salinger</p>
-                        <div className="flex mt-1">
-                          <div className="flex">
-                            {[0, 1, 2, 3, 4].map((rating) => (
-                              <Star
-                                key={rating}
-                                className={`h-4 w-4 ${rating < 4 ? "text-yellow-400" : "text-gray-300"}`}
-                                fill={rating < 4 ? "currentColor" : "none"}
-                              />
-                            ))}
-                          </div>
-                          <span className="ml-1 text-xs text-gray-500">(4.0)</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Book 2 */}
-                    <div className="flex items-center border-b border-gray-200 pb-4">
-                      <div className="flex-shrink-0 h-16 w-12 bg-gray-300 rounded">
-                        <div className="h-full w-full flex items-center justify-center text-gray-500">
-                          <Book className="h-8 w-8" />
-                        </div>
-                      </div>
-                      <div className="ml-4">
-                        <h4 className="text-base font-medium text-gray-900">Brave New World</h4>
-                        <p className="text-sm text-gray-500">Aldous Huxley</p>
-                        <div className="flex mt-1">
-                          <div className="flex">
-                            {[0, 1, 2, 3, 4].map((rating) => (
-                              <Star
-                                key={rating}
-                                className={`h-4 w-4 ${rating < 5 ? "text-yellow-400" : "text-gray-300"}`}
-                                fill={rating < 5 ? "currentColor" : "none"}
-                              />
-                            ))}
-                          </div>
-                          <span className="ml-1 text-xs text-gray-500">(4.8)</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Book 3 */}
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-16 w-12 bg-gray-300 rounded">
-                        <div className="h-full w-full flex items-center justify-center text-gray-500">
-                          <Book className="h-8 w-8" />
-                        </div>
-                      </div>
-                      <div className="ml-4">
-                        <h4 className="text-base font-medium text-gray-900">The Alchemist</h4>
-                        <p className="text-sm text-gray-500">Paulo Coelho</p>
-                        <div className="flex mt-1">
-                          <div className="flex">
-                            {[0, 1, 2, 3, 4].map((rating) => (
-                              <Star
-                                key={rating}
-                                className={`h-4 w-4 ${rating < 4 ? "text-yellow-400" : "text-gray-300"}`}
-                                fill={rating < 4 ? "currentColor" : "none"}
-                              />
-                            ))}
-                          </div>
-                          <span className="ml-1 text-xs text-gray-500">(4.2)</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* Featured Books Grid */}
-        <div className="px-4 py-6 sm:px-0">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">Featured Books</h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {/* Book Card 1 */}
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="h-40 bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center">
-                <Book className="h-16 w-16 text-white" />
-              </div>
-              <div className="px-4 py-5 sm:p-6">
-                <h3 className="text-lg font-medium text-gray-900">Pride and Prejudice</h3>
-                <p className="mt-1 text-sm text-gray-500">Jane Austen</p>
-                <div className="mt-4 flex items-center">
-                  <div className="flex">
-                    {[0, 1, 2, 3, 4].map((rating) => (
-                      <Star
-                        key={rating}
-                        className={`h-5 w-5 ${rating < 4 ? "text-yellow-400" : "text-gray-300"}`}
-                        fill={rating < 4 ? "currentColor" : "none"}
-                      />
-                    ))}
-                  </div>
-                  <span className="ml-2 text-sm text-gray-500">(4.2 - 328 reviews)</span>
-                </div>
-                <button className="mt-4 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
-                  Reserve Book
-                </button>
-              </div>
-            </div>
+          {/* Quick Actions */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <button
+                onClick={() => window.location.href = '/user/books'}
+                className="flex items-center justify-center p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+              >
+                <Book className="h-5 w-5 text-blue-600 mr-2" />
+                <span className="text-sm font-medium text-blue-900">Browse Books</span>
+              </button>
 
-            {/* Book Card 2 */}
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="h-40 bg-gradient-to-r from-green-500 to-teal-600 flex items-center justify-center">
-                <Book className="h-16 w-16 text-white" />
-              </div>
-              <div className="px-4 py-5 sm:p-6">
-                <h3 className="text-lg font-medium text-gray-900">The Hobbit</h3>
-                <p className="mt-1 text-sm text-gray-500">J.R.R. Tolkien</p>
-                <div className="mt-4 flex items-center">
-                  <div className="flex">
-                    {[0, 1, 2, 3, 4].map((rating) => (
-                      <Star
-                        key={rating}
-                        className={`h-5 w-5 ${rating < 5 ? "text-yellow-400" : "text-gray-300"}`}
-                        fill={rating < 5 ? "currentColor" : "none"}
-                      />
-                    ))}
-                  </div>
-                  <span className="ml-2 text-sm text-gray-500">(4.8 - 492 reviews)</span>
-                </div>
-                <button className="mt-4 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
-                  Reserve Book
-                </button>
-              </div>
-            </div>
+              <button
+                onClick={() => window.location.href = '/user/borrows'}
+                className="flex items-center justify-center p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+              >
+                <Calendar className="h-5 w-5 text-green-600 mr-2" />
+                <span className="text-sm font-medium text-green-900">My Borrows</span>
+              </button>
 
-            {/* Book Card 3 */}
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="h-40 bg-gradient-to-r from-purple-500 to-pink-600 flex items-center justify-center">
-                <Book className="h-16 w-16 text-white" />
-              </div>
-              <div className="px-4 py-5 sm:p-6">
-                <h3 className="text-lg font-medium text-gray-900">The Little Prince</h3>
-                <p className="mt-1 text-sm text-gray-500">Antoine de Saint-Exupéry</p>
-                <div className="mt-4 flex items-center">
-                  <div className="flex">
-                    {[0, 1, 2, 3, 4].map((rating) => (
-                      <Star
-                        key={rating}
-                        className={`h-5 w-5 ${rating < 5 ? "text-yellow-400" : "text-gray-300"}`}
-                        fill={rating < 5 ? "currentColor" : "none"}
-                      />
-                    ))}
-                  </div>
-                  <span className="ml-2 text-sm text-gray-500">(4.7 - 412 reviews)</span>
-                </div>
-                <button className="mt-4 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700">
-                  Reserve Book
-                </button>
-              </div>
+              <button
+                onClick={() => window.location.href = '/user/reservation'}
+                className="flex items-center justify-center p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
+              >
+                <Clock className="h-5 w-5 text-purple-600 mr-2" />
+                <span className="text-sm font-medium text-purple-900">Reservations</span>
+              </button>
+
+              <button
+                onClick={() => window.location.href = '/user/recommendations'}
+                className="flex items-center justify-center p-4 bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors">
+                <Star className="h-5 w-5 text-yellow-600 mr-2" />
+                <span className="text-sm font-medium text-yellow-900">Recommendations</span>
+              </button>
             </div>
           </div>
         </div>

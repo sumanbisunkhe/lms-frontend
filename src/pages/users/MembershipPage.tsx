@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import toast, { Toaster } from 'react-hot-toast';
+import { showToast } from '../../utils/toast';
 import UserHeader from '../../components/users/UserHeader';
 import { Calendar, CheckCircle, AlertCircle, User, CreditCard, Loader2, Plus } from 'lucide-react';
 
@@ -74,7 +74,7 @@ const MembershipPage: React.FC = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch membership';
       setError(errorMessage);
-      toast.error(errorMessage);
+      showToast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -113,13 +113,13 @@ const MembershipPage: React.FC = () => {
       if (result.success) {
         setMembership(result.data);
         setShowCreateModal(false);
-        toast.success('Membership created successfully!');
+        showToast.success('Membership created successfully!');
       } else {
         throw new Error(result.message || 'Failed to create membership');
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create membership';
-      toast.error(errorMessage);
+      showToast.error(errorMessage);
     } finally {
       setCreating(false);
     }
@@ -158,42 +158,6 @@ const MembershipPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      {/* Toast Container */}
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: '#fff',
-            color: '#374151',
-            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-            border: '1px solid #e5e7eb',
-            borderRadius: '12px',
-            padding: '16px',
-            fontSize: '14px',
-            fontWeight: '500',
-          },
-          success: {
-            iconTheme: {
-              primary: '#10b981',
-              secondary: '#fff',
-            },
-            style: {
-              border: '1px solid #10b981',
-            },
-          },
-          error: {
-            iconTheme: {
-              primary: '#ef4444',
-              secondary: '#fff',
-            },
-            style: {
-              border: '1px solid #ef4444',
-            },
-          },
-        }}
-      />
-
       {/* Header with Navigation Tabs */}
       <UserHeader 
         username={user?.username || 'User'} 

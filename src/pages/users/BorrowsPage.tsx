@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import toast, { Toaster } from 'react-hot-toast';
+import { showToast } from '../../utils/toast';
 import UserHeader from '../../components/users/UserHeader';
-import { Calendar, CheckCircle, XCircle, AlertCircle, Book, Loader2, ChevronLeft, ChevronRight, RotateCcw, Eye } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, AlertCircle, Book, Loader2, ChevronLeft, ChevronRight, RotateCcw, Eye, Star } from 'lucide-react';
 
 interface BookDetails {
   id: number;
@@ -72,6 +72,18 @@ interface BorrowsResponse {
   success: boolean;
 }
 
+interface RatingRequest {
+  rating: number;
+  review: string;
+}
+
+interface RatingResponse {
+  data: any;
+  message: string;
+  status: number;
+  success: boolean;
+}
+
 const BorrowsPage: React.FC = () => {
   const userStr = localStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : null;
@@ -85,6 +97,13 @@ const BorrowsPage: React.FC = () => {
   const [returningBookId, setReturningBookId] = useState<number | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedBorrow, setSelectedBorrow] = useState<BorrowDetailData | null>(null);
+  const [currentBorrowId, setCurrentBorrowId] = useState<number | null>(null);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [selectedBookForRating, setSelectedBookForRating] = useState<BorrowData | null>(null);
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [review, setReview] = useState('');
+  const [submittingRating, setSubmittingRating] = useState(false);
 
   const handleLogout = () => {
     localStorage.removeItem('authToken');
@@ -131,7 +150,7 @@ const BorrowsPage: React.FC = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch borrows';
       setError(errorMessage);
-      toast.error(errorMessage);
+      showToast.error(errorMessage);
       setBorrows([]);
     } finally {
       setLoading(false);
@@ -160,13 +179,14 @@ const BorrowsPage: React.FC = () => {
       
       if (result.success) {
         setSelectedBorrow(result.data);
+        setCurrentBorrowId(id);
         setShowDetailModal(true);
       } else {
         throw new Error(result.message || 'Failed to fetch borrow details');
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch borrow details';
-      toast.error(errorMessage);
+      showToast.error(errorMessage);
     }
   };
 
@@ -190,17 +210,64 @@ const BorrowsPage: React.FC = () => {
       const result = await response.json();
       
       if (result.success) {
-        toast.success('Book returned successfully!');
-        // Refresh the borrows list
+        showToast.success('Book returned successfully!');
         fetchBorrows(currentPage);
       } else {
         throw new Error(result.message || 'Failed to return book');
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to return book';
-      toast.error(errorMessage);
+      showToast.error(errorMessage);
     } finally {
       setReturningBookId(null);
+    }
+  };
+
+  const submitRating = async () => {
+    if (!selectedBookForRating || rating === 0) {
+      showToast.error('Please select a rating');
+      return;
+    }
+
+    setSubmittingRating(true);
+
+    try {
+      const token = localStorage.getItem('authToken');
+      const ratingData: RatingRequest = {
+        rating,
+        review: review.trim()
+      };
+
+      const response = await fetch(`http://localhost:8080/rating/book/${selectedBookForRating.id}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(ratingData)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result: RatingResponse = await response.json();
+      
+      if (result.success) {
+        showToast.success('Rating submitted successfully!');
+        setShowRatingModal(false);
+        setSelectedBookForRating(null);
+        setRating(0);
+        setHoverRating(0);
+        setReview('');
+      } else {
+        throw new Error(result.message || 'Failed to submit rating');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to submit rating';
+      showToast.error(errorMessage);
+    } finally {
+      setSubmittingRating(false);
     }
   };
 
@@ -212,9 +279,26 @@ const BorrowsPage: React.FC = () => {
     returnBook(borrowId);
   };
 
+  const handleRateBook = (borrow: BorrowData) => {
+    setSelectedBookForRating(borrow);
+    setRating(0);
+    setHoverRating(0);
+    setReview('');
+    setShowRatingModal(true);
+  };
+
   const closeDetailModal = () => {
     setShowDetailModal(false);
     setSelectedBorrow(null);
+    setCurrentBorrowId(null);
+  };
+
+  const closeRatingModal = () => {
+    setShowRatingModal(false);
+    setSelectedBookForRating(null);
+    setRating(0);
+    setHoverRating(0);
+    setReview('');
   };
 
   // Calculate days remaining or overdue
@@ -251,42 +335,6 @@ const BorrowsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      {/* Toast Container */}
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: '#fff',
-            color: '#374151',
-            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-            border: '1px solid #e5e7eb',
-            borderRadius: '12px',
-            padding: '16px',
-            fontSize: '14px',
-            fontWeight: '500',
-          },
-          success: {
-            iconTheme: {
-              primary: '#10b981',
-              secondary: '#fff',
-            },
-            style: {
-              border: '1px solid #10b981',
-            },
-          },
-          error: {
-            iconTheme: {
-              primary: '#ef4444',
-              secondary: '#fff',
-            },
-            style: {
-              border: '1px solid #ef4444',
-            },
-          },
-        }}
-      />
-
       {/* Header with Navigation Tabs */}
       <UserHeader 
         username={user?.username || 'User'} 
@@ -446,12 +494,14 @@ const BorrowsPage: React.FC = () => {
                                   className="text-green-600 hover:text-green-900 flex items-center disabled:opacity-50"
                                   title="Return Book"
                                 >
+                                  
                                   {returningBookId === borrow.id ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />
                                   ) : (
                                     <RotateCcw className="w-4 h-4" />
                                   )}
                                 </button>
+                                
                               </div>
                             </td>
                           </tr>
@@ -493,6 +543,9 @@ const BorrowsPage: React.FC = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Status
                       </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -521,6 +574,15 @@ const BorrowsPage: React.FC = () => {
                               Returned on time
                             </span>
                           )}
+                        </td>
+                        <td className="px-6 py-4 text-sm font-medium">
+                          <button
+                            onClick={() => handleRateBook(borrow)}
+                            className="text-yellow-600 hover:text-yellow-900 flex items-center"
+                            title="Rate Book"
+                          >
+                            <Star className="w-4 h-4" />
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -715,13 +777,15 @@ const BorrowsPage: React.FC = () => {
                   </button>
                   <button
                     onClick={() => {
-                      handleReturnBook(selectedBorrow.books.id);
-                      closeDetailModal();
+                      if (currentBorrowId) {
+                        handleReturnBook(currentBorrowId);
+                        closeDetailModal();
+                      }
                     }}
-                    disabled={returningBookId === selectedBorrow.books.id}
+                    disabled={!currentBorrowId || returningBookId === currentBorrowId}
                     className="px-4 py-2 text-sm font-semibold text-white bg-green-500 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors duration-200 flex items-center"
                   >
-                    {returningBookId === selectedBorrow.books.id ? (
+                    {returningBookId === currentBorrowId ? (
                       <Loader2 className="w-4 h-4 animate-spin mr-2" />
                     ) : (
                       <RotateCcw className="w-4 h-4 mr-2" />
@@ -730,6 +794,104 @@ const BorrowsPage: React.FC = () => {
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rating Modal */}
+      {showRatingModal && selectedBookForRating && (
+        <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto border border-gray-100 relative">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 px-6 py-4 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Star className="h-5 w-5 text-white mr-2" />
+                  <h3 className="text-lg font-bold text-white">Rate Book</h3>
+                </div>
+                <button
+                  onClick={closeRatingModal}
+                  className="text-white hover:text-gray-200 p-1"
+                >
+                  <XCircle className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+            
+            {/* Modal Content */}
+            <div className="p-6">
+              {/* Book Info */}
+              <div className="mb-6">
+                <h4 className="font-medium text-gray-900 mb-1">{selectedBookForRating.title}</h4>
+                <p className="text-sm text-gray-600">by {selectedBookForRating.author}</p>
+              </div>
+
+              {/* Star Rating */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Your Rating
+                </label>
+                <div className="flex items-center space-x-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onMouseEnter={() => setHoverRating(star)}
+                      onMouseLeave={() => setHoverRating(0)}
+                      onClick={() => setRating(star)}
+                      className="p-1 transition-colors"
+                    >
+                      <Star
+                        className={`w-8 h-8 ${
+                          star <= (hoverRating || rating)
+                            ? 'text-yellow-400 fill-current'
+                            : 'text-gray-300'
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Click to rate</p>
+              </div>
+
+              {/* Review */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Review (Optional)
+                </label>
+                <textarea
+                  value={review}
+                  onChange={(e) => setReview(e.target.value)}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 resize-none"
+                  placeholder="Share your thoughts about this book..."
+                  maxLength={500}
+                />
+                <p className="text-xs text-gray-500 mt-1">{review.length}/500 characters</p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={closeRatingModal}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitRating}
+                  disabled={rating === 0 || submittingRating}
+                  className="px-4 py-2 text-sm font-medium text-white bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors flex items-center"
+                >
+                  {submittingRating ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Star className="w-4 h-4 mr-2" />
+                  )}
+                  Submit Rating
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -14,10 +14,10 @@ const LoginPage: React.FC = () => {
     // Check if we have a success message from registration
     if (location.state?.message) {
       showToast.success(location.state.message);
-      // Clear the location state to prevent showing the message again on refresh
-      window.history.replaceState({}, document.title);
+      // Clear the location state immediately to prevent showing the message again
+      navigate(location.pathname, { replace: true, state: {} });
     }
-  }, [location.state]);
+  }, [location.state, navigate, location.pathname]);
 
   const handleLogin = async (credentials: LoginRequest) => {
     setLoading(true);
@@ -30,22 +30,19 @@ const LoginPage: React.FC = () => {
         localStorage.setItem('authToken', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data));
         
-        // Show success toast
+        // Show success toast using the predefined method
         showToast.auth.loginSuccess();
         
-        // Redirect based on user role
+        // Redirect based on user role immediately without delay
         if (response.data.roles && response.data.roles.includes("USER")) {
-          // If the user has USER role, navigate to user dashboard
-          navigate('/user-dashboard');
+          navigate('/user/dashboard', { replace: true });
         } else if (response.data.roles && response.data.roles.includes("ADMIN")) {
-          // If the user has ADMIN role, navigate to admin dashboard
-          navigate('/admin-dashboard');
+          navigate('/admin-dashboard', { replace: true });
         } else {
-          // Default dashboard for other roles
-          navigate('/dashboard');
+          navigate('/dashboard', { replace: true });
         }
       } else {
-        showToast.auth.loginError(response.message);
+        showToast.error(response.message || 'Login failed. Please try again.');
       }
     } catch (err: any) {
       console.error('Login error:', err);
