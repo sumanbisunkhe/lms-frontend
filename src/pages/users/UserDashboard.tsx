@@ -34,6 +34,15 @@ interface MembershipResponse {
   success: boolean;
 }
 
+interface DocumentData {
+  id: number;
+  url: string | null;
+  document: null;
+  documentType: string;
+  fileName: string;
+  createdAt: string;
+}
+
 interface BookData {
   id: number;
   title: string;
@@ -44,6 +53,7 @@ interface BookData {
   totalCopies: number;
   availableCopies: number;
   isAvailable: boolean;
+  documents: DocumentData[];
   createdAt: string;
   updatedAt: string;
 }
@@ -73,6 +83,7 @@ const UserDashboard: React.FC = () => {
   const [totalMembership, setTotalMembership] = useState<number>(0);
   const [featuredBooks, setFeaturedBooks] = useState<BookData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [documentUrls, setDocumentUrls] = useState<Record<number, string>>({});
 
   const handleLogout = () => {
     localStorage.removeItem('authToken');
@@ -169,6 +180,65 @@ const UserDashboard: React.FC = () => {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch featured books';
       showToast.error(errorMessage);
     }
+  };
+
+  const fetchDocumentUrl = async (documentId: number): Promise<string | null> => {
+    // Check if we already have the URL cached
+    if (documentUrls[documentId]) {
+      return documentUrls[documentId];
+    }
+
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`http://localhost:8080/api/document/${documentId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.data.url) {
+        // Cache the URL
+        setDocumentUrls(prev => ({
+          ...prev,
+          [documentId]: result.data.url
+        }));
+        return result.data.url;
+      }
+    } catch (err) {
+      console.error('Failed to fetch document URL:', err);
+    }
+
+    return null;
+  };
+
+  const getCoverImageUrl = (book: BookData): string | null => {
+    const coverDocument = book.documents?.find(doc => 
+      doc.documentType.includes('cover') || doc.documentType === '"cover"'
+    );
+    
+    if (coverDocument) {
+      // If URL is already available in the document, use it
+      if (coverDocument.url) {
+        return coverDocument.url;
+      }
+      
+      // Otherwise, check if we have it cached
+      if (documentUrls[coverDocument.id]) {
+        return documentUrls[coverDocument.id];
+      }
+      
+      // Fetch the document URL asynchronously
+      fetchDocumentUrl(coverDocument.id);
+    }
+    
+    return null;
   };
 
   useEffect(() => {
@@ -303,55 +373,79 @@ const UserDashboard: React.FC = () => {
             <div className="mb-8">
               <h2 className="text-2xl font-bold mb-6 text-gray-900">Featured Books</h2>
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {featuredBooks.map((book) => (
-                  <div key={book.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
-                    <div className={`h-40 bg-gradient-to-r ${getBookColor(book.genre)} flex items-center justify-center`}>
-                      <Book className="h-16 w-16 text-white" />
-                    </div>
-                    <div className="p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1">{book.title}</h3>
-                      <p className="text-sm text-gray-600 mb-2">by {book.author}</p>
-                      <div className="flex items-center justify-between mb-4">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {book.genre}
-                        </span>
-                        <span className="text-sm text-gray-500">
-                          {book.availableCopies}/{book.totalCopies} available
-                        </span>
+                {featuredBooks.map((book) => {
+                  const coverUrl = getCoverImageUrl(book);
+                  
+                  return (
+                    <div key={book.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+                      <div className={`h-72 bg-gradient-to-r ${getBookColor(book.genre)} flex items-center justify-center overflow-hidden`}>
+                        {coverUrl ? (
+                          <img
+                            src={coverUrl}
+                            alt={`Cover of ${book.title}`}
+                            className="w-full h-full object-contain bg-white"
+                            onError={(e) => {
+                              // Fallback to icon if image fails to load
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              const parent = target.parentElement;
+                              if (parent && !parent.querySelector('.fallback-icon')) {
+                                const iconDiv = document.createElement('div');
+                                iconDiv.className = 'flex items-center justify-center w-full h-full fallback-icon';
+                                iconDiv.innerHTML = '<svg class="h-16 w-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253z"></path></svg>';
+                                parent.appendChild(iconDiv);
+                              }
+                            }}
+                          />
+                        ) : (
+                          <Book className="h-16 w-16 text-white" />
+                        )}
                       </div>
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm text-gray-500">
-                          <span className="font-medium">Publisher:</span> {book.publisher}
+                      <div className="p-6">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-1">{book.title}</h3>
+                        <p className="text-sm text-gray-600 mb-2">by {book.author}</p>
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {book.genre}
+                          </span>
+                          <span className="text-sm text-gray-500">
+                            {book.availableCopies}/{book.totalCopies} available
+                          </span>
                         </div>
-                        <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${book.isAvailable
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
-                          }`}>
-                          {book.isAvailable ? (
-                            <>
-                              <CheckCircle2 className="w-3 h-3 mr-1" />
-                              Available
-                            </>
-                          ) : (
-                            <>
-                              <AlertCircle className="w-3 h-3 mr-1" />
-                              Unavailable
-                            </>
-                          )}
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm text-gray-500">
+                            <span className="font-medium">Publisher:</span> {book.publisher}
+                          </div>
+                          <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${book.isAvailable
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                            }`}>
+                            {book.isAvailable ? (
+                              <>
+                                <CheckCircle2 className="w-3 h-3 mr-1" />
+                                Available
+                              </>
+                            ) : (
+                              <>
+                                <AlertCircle className="w-3 h-3 mr-1" />
+                                Unavailable
+                              </>
+                            )}
+                          </div>
                         </div>
+                        <button
+                          className={`mt-4 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg transition-colors ${book.isAvailable
+                            ? 'text-white bg-blue-600 hover:bg-blue-700'
+                            : 'text-gray-400 bg-gray-100 cursor-not-allowed'
+                            }`}
+                          disabled={!book.isAvailable}
+                        >
+                          {book.isAvailable ? 'View Details' : 'Not Available'}
+                        </button>
                       </div>
-                      <button
-                        className={`mt-4 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg transition-colors ${book.isAvailable
-                          ? 'text-white bg-blue-600 hover:bg-blue-700'
-                          : 'text-gray-400 bg-gray-100 cursor-not-allowed'
-                          }`}
-                        disabled={!book.isAvailable}
-                      >
-                        {book.isAvailable ? 'View Details' : 'Not Available'}
-                      </button>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

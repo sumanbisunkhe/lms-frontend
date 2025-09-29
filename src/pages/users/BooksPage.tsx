@@ -5,6 +5,15 @@ import { showToast } from '../../utils/toast';
 import UserHeader from '../../components/users/UserHeader';
 import { Search, Filter, Book, ChevronLeft, ChevronRight, Loader2, AlertCircle, Calendar } from 'lucide-react';
 
+interface DocumentData {
+  id: number;
+  url: string | null;
+  document: null;
+  documentType: string;
+  fileName: string;
+  createdAt: string;
+}
+
 interface BookData {
   id: number;
   title: string;
@@ -15,6 +24,7 @@ interface BookData {
   totalCopies: number | null;
   availableCopies: number | null;
   isAvailable: boolean;
+  documents: DocumentData[];
   createdAt: string;
   updatedAt: string;
 }
@@ -89,6 +99,7 @@ const BooksPage: React.FC = () => {
   const [selectedReturnDate, setSelectedReturnDate] = useState<Date | null>(null);
   const [membership, setMembership] = useState<MembershipData | null>(null);
   const [reservingBookId, setReservingBookId] = useState<number | null>(null);
+  const [documentUrls, setDocumentUrls] = useState<Record<number, string>>({});
 
   const handleLogout = () => {
     localStorage.removeItem('authToken');
@@ -283,6 +294,65 @@ const BooksPage: React.FC = () => {
     setSelectedReturnDate(null);
   };
 
+  const fetchDocumentUrl = async (documentId: number): Promise<string | null> => {
+    // Check if we already have the URL cached
+    if (documentUrls[documentId]) {
+      return documentUrls[documentId];
+    }
+
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`http://localhost:8080/api/document/${documentId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.data.url) {
+        // Cache the URL
+        setDocumentUrls(prev => ({
+          ...prev,
+          [documentId]: result.data.url
+        }));
+        return result.data.url;
+      }
+    } catch (err) {
+      console.error('Failed to fetch document URL:', err);
+    }
+
+    return null;
+  };
+
+  const getCoverImageUrl = (book: BookData): string | null => {
+    const coverDocument = book.documents?.find(doc => 
+      doc.documentType.includes('cover') || doc.documentType === '"cover"'
+    );
+    
+    if (coverDocument) {
+      // If URL is already available in the document, use it
+      if (coverDocument.url) {
+        return coverDocument.url;
+      }
+      
+      // Otherwise, check if we have it cached
+      if (documentUrls[coverDocument.id]) {
+        return documentUrls[coverDocument.id];
+      }
+      
+      // Fetch the document URL asynchronously
+      fetchDocumentUrl(coverDocument.id);
+    }
+    
+    return null;
+  };
+
   useEffect(() => {
     // Ensure we start with a valid page number
     const validPage = Math.max(1, currentPage);
@@ -400,74 +470,98 @@ const BooksPage: React.FC = () => {
           {/* Books Grid */}
           {!loading && books.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-              {books.map((book) => (
-                <div key={book.id} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow border border-gray-200">
-                  <div className="h-48 bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center rounded-t-lg">
-                    <Book className="h-16 w-16 text-white" />
-                  </div>
-                  <div className="p-5">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1 line-clamp-2">{book.title}</h3>
-                    <p className="text-sm text-gray-600 mb-2">by {book.author}</p>
-                    <p className="text-xs text-gray-500 mb-3">{book.publisher}</p>
-                    
-                    <div className="space-y-2 mb-4">
-                      <div className="flex justify-between text-xs text-gray-500">
-                        <span>Genre:</span>
-                        <span className="font-medium">{book.genre}</span>
-                      </div>
-                      <div className="flex justify-between text-xs text-gray-500">
-                        <span>ISBN:</span>
-                        <span className="font-medium">{book.isbn}</span>
-                      </div>
-                      {book.totalCopies !== null && (
+              {books.map((book) => {
+                const coverUrl = getCoverImageUrl(book);
+                
+                return (
+                  <div key={book.id} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow border border-gray-200">
+                    <div className="h-64 bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center rounded-t-lg overflow-hidden">
+                      {coverUrl ? (
+                        <img
+                          src={coverUrl}
+                          alt={`Cover of ${book.title}`}
+                          className="w-full h-full object-contain bg-white"
+                          onError={(e) => {
+                            // Fallback to icon if image fails to load
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const parent = target.parentElement;
+                            if (parent && !parent.querySelector('.fallback-icon')) {
+                              const iconDiv = document.createElement('div');
+                              iconDiv.className = 'flex items-center justify-center w-full h-full fallback-icon';
+                              iconDiv.innerHTML = '<svg class="h-16 w-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253z"></path></svg>';
+                              parent.appendChild(iconDiv);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <Book className="h-16 w-16 text-white" />
+                      )}
+                    </div>
+                    <div className="p-5">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-1 line-clamp-2">{book.title}</h3>
+                      <p className="text-sm text-gray-600 mb-2">by {book.author}</p>
+                      <p className="text-xs text-gray-500 mb-3">{book.publisher}</p>
+                      
+                      <div className="space-y-2 mb-4">
                         <div className="flex justify-between text-xs text-gray-500">
-                          <span>Available:</span>
-                          <span className={`font-medium ${book.availableCopies! > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {book.availableCopies}/{book.totalCopies} copies
-                          </span>
+                          <span>Genre:</span>
+                          <span className="font-medium">{book.genre}</span>
                         </div>
-                      )}
-                    </div>
-                    
-                    {/* Action Buttons */}
-                    <div className="space-y-2">
-                      {/* Primary Action Button */}
-                      <button
-                        onClick={() => handleBorrowClick(book.id)}
-                        disabled={!book.isAvailable || (book.availableCopies !== null && book.availableCopies === 0)}
-                        className="w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-orange-500 hover:bg-orange-600 text-white"
-                      >
-                        {book.isAvailable && (book.availableCopies === null || book.availableCopies > 0) ? 'Borrow Book' : 'Not Available'}
-                      </button>
+                        <div className="flex justify-between text-xs text-gray-500">
+                          <span>ISBN:</span>
+                          <span className="font-medium">{book.isbn}</span>
+                        </div>
+                        {book.totalCopies !== null && (
+                          <div className="flex justify-between text-xs text-gray-500">
+                            <span>Available:</span>
+                            <span className={`font-medium ${book.availableCopies! > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {book.availableCopies}/{book.totalCopies} copies
+                            </span>
+                          </div>
+                        )}
+                      </div>
                       
-                      {/* Reserve Button - Show when book is not available */}
-                      {(!book.isAvailable || (book.availableCopies !== null && book.availableCopies === 0)) && membership && (
+                      {/* Action Buttons */}
+                      <div className="space-y-2">
+                        {/* Primary Action Button */}
                         <button
-                          onClick={() => reserveBook(book.id)}
-                          disabled={reservingBookId === book.id}
-                          className="w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                          onClick={() => handleBorrowClick(book.id)}
+                          disabled={!book.isAvailable || (book.availableCopies !== null && book.availableCopies === 0)}
+                          className="w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-orange-500 hover:bg-orange-600 text-white"
                         >
-                          {reservingBookId === book.id ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                              Reserving...
-                            </>
-                          ) : (
-                            'Reserve Book'
-                          )}
+                          {book.isAvailable && (book.availableCopies === null || book.availableCopies > 0) ? 'Borrow Book' : 'Not Available'}
                         </button>
-                      )}
-                      
-                      {/* No Membership Message */}
-                      {(!book.isAvailable || (book.availableCopies !== null && book.availableCopies === 0)) && !membership && (
-                        <p className="text-xs text-gray-500 text-center">
-                          Membership required to reserve
-                        </p>
-                      )}
+                        
+                        {/* Reserve Button - Show when book is not available */}
+                        {(!book.isAvailable || (book.availableCopies !== null && book.availableCopies === 0)) && membership && (
+                          <button
+                            onClick={() => reserveBook(book.id)}
+                            disabled={reservingBookId === book.id}
+                            className="w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                          >
+                            {reservingBookId === book.id ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                Reserving...
+                              </>
+                            ) : (
+                              'Reserve Book'
+                            )}
+                          </button>
+                        )}
+                        
+                        {/* No Membership Message */}
+                        {(!book.isAvailable || (book.availableCopies !== null && book.availableCopies === 0)) && !membership && (
+                          <p className="text-xs text-gray-500 text-center">
+                            Membership required to reserve
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
