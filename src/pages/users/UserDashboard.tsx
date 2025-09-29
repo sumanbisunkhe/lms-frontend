@@ -5,7 +5,6 @@ import {
   Book,
   Calendar,
   Star,
-  Award,
   Clock,
   CheckCircle2,
   AlertCircle,
