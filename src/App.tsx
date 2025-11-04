@@ -6,10 +6,10 @@ import UserDashboard from './pages/users/UserDashboard';
 import BooksPage from './pages/users/BooksPage';
 import ReservationPage from './pages/users/ReservationPage';
 import MembershipPage from './pages/users/MembershipPage';
-import RatingsPage from './pages/users/RecommendationPage';
-import BorrowsPage from './pages/users/BorrowsPage';
-import './App.css'
 import RecommendationPage from './pages/users/RecommendationPage';
+import BorrowsPage from './pages/users/BorrowsPage';
+import PaymentCallbackPage from './pages/users/PaymentCallbackPage';
+import './App.css'
 
 function App() {
   return (
@@ -24,6 +24,8 @@ function App() {
           <Route path="/user/membership" element={<MembershipPage />} />
           <Route path="/user/recommendations" element={<RecommendationPage />} />
           <Route path="/user/borrows" element={<BorrowsPage />} />
+          <Route path="/payment/callback" element={<PaymentCallbackPage />} />
+          <Route path="/api/payments/khalti/callback" element={<PaymentCallbackPage />} />
           <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
         <Toaster 

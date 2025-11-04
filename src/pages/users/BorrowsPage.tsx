@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { showToast } from '../../utils/toast';
 import UserHeader from '../../components/users/UserHeader';
-import { Calendar, CheckCircle, XCircle, AlertCircle, Book, Loader2, ChevronLeft, ChevronRight, RotateCcw, Eye, Star } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, AlertCircle, Book, Loader2, ChevronLeft, ChevronRight, RotateCcw, Eye, Star, HandCoins } from 'lucide-react';
+import { paymentService } from '../../services/paymentService';
 
 interface BookDetails {
   id: number;
@@ -104,6 +105,7 @@ const BorrowsPage: React.FC = () => {
   const [hoverRating, setHoverRating] = useState(0);
   const [review, setReview] = useState('');
   const [submittingRating, setSubmittingRating] = useState(false);
+  const [payingBorrowId, setPayingBorrowId] = useState<number | null>(null);
 
   const handleLogout = () => {
     localStorage.removeItem('authToken');
@@ -285,6 +287,36 @@ const BorrowsPage: React.FC = () => {
     setHoverRating(0);
     setReview('');
     setShowRatingModal(true);
+  };
+
+  const handlePayFine = async (borrowId: number, fineAmount: number, bookTitle: string) => {
+    if (fineAmount <= 0) {
+      showToast.error('No fine amount to pay');
+      return;
+    }
+
+    if (!window.confirm(`Pay fine of $${fineAmount} for "${bookTitle}"?`)) {
+      return;
+    }
+
+    setPayingBorrowId(borrowId);
+
+    try {
+      const result = await paymentService.initiatePayment(borrowId);
+      
+      if (result.success && result.data.payment_url) {
+        showToast.success('Redirecting to payment gateway...');
+        // Redirect to Khalti payment page
+        window.location.href = result.data.payment_url;
+      } else {
+        throw new Error(result.message || 'Failed to initiate payment');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to initiate payment';
+      showToast.error(errorMessage);
+    } finally {
+      setPayingBorrowId(null);
+    }
   };
 
   const closeDetailModal = () => {
@@ -501,7 +533,20 @@ const BorrowsPage: React.FC = () => {
                                     <RotateCcw className="w-4 h-4" />
                                   )}
                                 </button>
-                                
+                                {borrow.fineAmount && borrow.fineAmount > 0 && (
+                                  <button
+                                    onClick={() => handlePayFine(borrow.id, borrow.fineAmount!, borrow.title)}
+                                    disabled={payingBorrowId === borrow.id}
+                                    className="text-yellow-600 hover:text-yellow-900 flex items-center disabled:opacity-50"
+                                    title="Pay Fine"
+                                  >
+                                    {payingBorrowId === borrow.id ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      <HandCoins className="w-4 h-4" />
+                                    )}
+                                  </button>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -576,13 +621,29 @@ const BorrowsPage: React.FC = () => {
                           )}
                         </td>
                         <td className="px-6 py-4 text-sm font-medium">
-                          <button
-                            onClick={() => handleRateBook(borrow)}
-                            className="text-yellow-600 hover:text-yellow-900 flex items-center"
-                            title="Rate Book"
-                          >
-                            <Star className="w-4 h-4" />
-                          </button>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleRateBook(borrow)}
+                              className="text-yellow-600 hover:text-yellow-900 flex items-center"
+                              title="Rate Book"
+                            >
+                              <Star className="w-4 h-4" />
+                            </button>
+                            {borrow.fineAmount && borrow.fineAmount > 0 && (
+                              <button
+                                onClick={() => handlePayFine(borrow.id, borrow.fineAmount!, borrow.title)}
+                                disabled={payingBorrowId === borrow.id}
+                                className="text-green-600 hover:text-green-900 flex items-center disabled:opacity-50"
+                                title="Pay Fine"
+                              >
+                                {payingBorrowId === borrow.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <HandCoins className="w-4 h-4" />
+                                )}
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
