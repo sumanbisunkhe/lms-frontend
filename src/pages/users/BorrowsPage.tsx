@@ -41,6 +41,7 @@ interface BorrowDetailResponse {
 
 interface BorrowData {
   id: number;
+  bookId: number;
   borrowDate: string;
   returnDate: string | null;
   title: string;
@@ -106,6 +107,12 @@ const BorrowsPage: React.FC = () => {
   const [review, setReview] = useState('');
   const [submittingRating, setSubmittingRating] = useState(false);
   const [payingBorrowId, setPayingBorrowId] = useState<number | null>(null);
+  const [showPayFineModal, setShowPayFineModal] = useState(false);
+  const [selectedFinePayment, setSelectedFinePayment] = useState<{
+    borrowId: number;
+    fineAmount: number;
+    bookTitle: string;
+  } | null>(null);
 
   const handleLogout = () => {
     localStorage.removeItem('authToken');
@@ -240,7 +247,7 @@ const BorrowsPage: React.FC = () => {
         review: review.trim()
       };
 
-      const response = await fetch(`http://localhost:8080/rating/book/${selectedBookForRating.id}`, {
+      const response = await fetch(`http://localhost:8080/rating/book/${selectedBookForRating.bookId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -281,28 +288,60 @@ const BorrowsPage: React.FC = () => {
     returnBook(borrowId);
   };
 
-  const handleRateBook = (borrow: BorrowData) => {
-    setSelectedBookForRating(borrow);
-    setRating(0);
-    setHoverRating(0);
-    setReview('');
-    setShowRatingModal(true);
+  const handleRateBook = async (borrow: BorrowData) => {
+    // Fetch full borrow details to get the book ID
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`http://localhost:8080/borrow/${borrow.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result: BorrowDetailResponse = await response.json();
+      
+      if (result.success) {
+        // Set the borrow with the correct book ID from the detailed response
+        const enrichedBorrow: BorrowData = {
+          ...borrow,
+          bookId: result.data.books.id
+        };
+        setSelectedBookForRating(enrichedBorrow);
+        setRating(0);
+        setHoverRating(0);
+        setReview('');
+        setShowRatingModal(true);
+      } else {
+        throw new Error(result.message || 'Failed to fetch borrow details');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch borrow details';
+      showToast.error(errorMessage);
+    }
   };
 
-  const handlePayFine = async (borrowId: number, fineAmount: number, bookTitle: string) => {
+  const handlePayFine = (borrowId: number, fineAmount: number, bookTitle: string) => {
     if (fineAmount <= 0) {
       showToast.error('No fine amount to pay');
       return;
     }
 
-    if (!window.confirm(`Pay fine of $${fineAmount} for "${bookTitle}"?`)) {
-      return;
-    }
+    setSelectedFinePayment({ borrowId, fineAmount, bookTitle });
+    setShowPayFineModal(true);
+  };
 
-    setPayingBorrowId(borrowId);
+  const confirmPayFine = async () => {
+    if (!selectedFinePayment) return;
+
+    setPayingBorrowId(selectedFinePayment.borrowId);
 
     try {
-      const result = await paymentService.initiatePayment(borrowId);
+      const result = await paymentService.initiatePayment(selectedFinePayment.borrowId);
       
       if (result.success && result.data.payment_url) {
         showToast.success('Redirecting to payment gateway...');
@@ -316,7 +355,14 @@ const BorrowsPage: React.FC = () => {
       showToast.error(errorMessage);
     } finally {
       setPayingBorrowId(null);
+      setShowPayFineModal(false);
+      setSelectedFinePayment(null);
     }
+  };
+
+  const cancelPayFine = () => {
+    setShowPayFineModal(false);
+    setSelectedFinePayment(null);
   };
 
   const closeDetailModal = () => {
@@ -366,7 +412,7 @@ const BorrowsPage: React.FC = () => {
   const onTimeReturns = borrowHistory.filter(borrow => borrow.fineAmount === null || borrow.fineAmount === 0).length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
       {/* Header with Navigation Tabs */}
       <UserHeader 
         username={user?.username || 'User'} 
@@ -374,48 +420,47 @@ const BorrowsPage: React.FC = () => {
       />
 
       {/* Main Content */}
-      <main className="pt-20 pb-8">
+      <main className="pt-24 pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Page Header */}
-          {/* <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">My Borrowed Books</h1>
-            <p className="mt-2 text-gray-600">Track your current borrows and borrowing history</p>
-          </div> */}
+          <div className="mb-8">
+            <p className="text-gray-600 text-center">Track your current borrows and borrowing history</p>
+          </div>
 
           {/* Borrowing Summary */}
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-3 mb-8">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 transform transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
               <div className="flex items-center">
-                <div className="p-3 bg-blue-100 rounded-lg">
-                  <Calendar className="h-6 w-6 text-blue-600" />
+                <div className="p-4 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-md">
+                  <Calendar className="h-7 w-7 text-white" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm text-gray-600">Currently Borrowed</p>
-                  <p className="text-2xl font-bold text-gray-900">{currentBorrows.length}</p>
+                  <p className="text-sm text-gray-600 font-medium">Currently Borrowed</p>
+                  <p className="text-3xl font-bold text-gray-900">{currentBorrows.length}</p>
                 </div>
               </div>
             </div>
             
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 transform transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
               <div className="flex items-center">
-                <div className="p-3 bg-green-100 rounded-lg">
-                  <CheckCircle className="h-6 w-6 text-green-600" />
+                <div className="p-4 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-md">
+                  <CheckCircle className="h-7 w-7 text-white" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm text-gray-600">On-Time Returns</p>
-                  <p className="text-2xl font-bold text-gray-900">{onTimeReturns}</p>
+                  <p className="text-sm text-gray-600 font-medium">On-Time Returns</p>
+                  <p className="text-3xl font-bold text-gray-900">{onTimeReturns}</p>
                 </div>
               </div>
             </div>
             
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 transform transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
               <div className="flex items-center">
-                <div className="p-3 bg-red-100 rounded-lg">
-                  <AlertCircle className="h-6 w-6 text-red-600" />
+                <div className="p-4 bg-gradient-to-br from-red-500 to-rose-600 rounded-xl shadow-md">
+                  <AlertCircle className="h-7 w-7 text-white" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm text-gray-600">Overdue Books</p>
-                  <p className="text-2xl font-bold text-gray-900">{overdueCount}</p>
+                  <p className="text-sm text-gray-600 font-medium">Overdue Books</p>
+                  <p className="text-3xl font-bold text-gray-900">{overdueCount}</p>
                 </div>
               </div>
             </div>
@@ -423,12 +468,14 @@ const BorrowsPage: React.FC = () => {
 
           {/* Error Message */}
           {error && (
-            <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-center">
-              <AlertCircle className="h-5 w-5 text-red-500 mr-3" />
-              <span className="text-red-700">{error}</span>
+            <div className="mb-6 bg-red-50 border-l-4 border-red-500 rounded-r-xl p-4 flex items-center shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="flex-shrink-0">
+                <AlertCircle className="h-5 w-5 text-red-500" />
+              </div>
+              <span className="ml-3 text-red-700 flex-1">{error}</span>
               <button 
                 onClick={() => setError(null)}
-                className="ml-auto text-red-500 hover:text-red-700"
+                className="ml-4 text-red-400 hover:text-red-600 transition-colors"
               >
                 ×
               </button>
@@ -437,85 +484,101 @@ const BorrowsPage: React.FC = () => {
 
           {/* Loading State */}
           {loading && (
-            <div className="flex justify-center items-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-              <span className="ml-2 text-gray-600">Loading borrowed books...</span>
+            <div className="flex flex-col justify-center items-center py-20">
+              <div className="relative">
+                <div className="absolute inset-0 bg-blue-400 rounded-full blur-xl opacity-20 animate-pulse"></div>
+                <Loader2 className="h-12 w-12 animate-spin text-blue-600 relative" />
+              </div>
+              <span className="mt-4 text-gray-600 font-medium">Loading borrowed books...</span>
             </div>
           )}
 
           {/* Current Borrows Section */}
           {!loading && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-900">Currently Borrowed Books</h2>
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 mb-8 overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-5">
+                <h2 className="text-2xl font-bold text-white flex items-center">
+                  <Book className="h-6 w-6 mr-3" />
+                  Currently Borrowed Books
+                </h2>
+                <p className="text-blue-100 text-sm mt-1">Books you need to return</p>
               </div>
               
               <div className="overflow-x-auto">
                 {currentBorrows.length > 0 ? (
                   <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                           Book Details
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                           Borrow Date
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                           Due Date
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                           Status
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                           Fine Amount
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                           Actions
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white divide-y divide-gray-100">
                       {currentBorrows.map(borrow => {
                         const daysRemaining = calculateDaysRemaining(borrow.dueDate);
                         const isBookOverdue = isOverdue(borrow.dueDate, borrow.isReturned);
                         
                         return (
-                          <tr key={borrow.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4">
-                              <div>
-                                <div className="text-sm font-medium text-gray-900">{borrow.title}</div>
-                                <div className="text-sm text-gray-500">by {borrow.author}</div>
-                                <div className="text-xs text-gray-400">{borrow.publisher} • ISBN: {borrow.isbn}</div>
+                          <tr key={borrow.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200">
+                            <td className="px-6 py-5">
+                              <div className="flex items-center">
+                                <div className="h-12 w-12 flex-shrink-0 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-lg flex items-center justify-center mr-4">
+                                  <Book className="h-6 w-6 text-blue-600" />
+                                </div>
+                                <div>
+                                  <div className="text-sm font-bold text-gray-900">{borrow.title}</div>
+                                  <div className="text-sm text-gray-600 font-medium">by {borrow.author}</div>
+                                  <div className="text-xs text-gray-500">{borrow.publisher} • {borrow.isbn}</div>
+                                </div>
                               </div>
                             </td>
-                            <td className="px-6 py-4 text-sm text-gray-900">
+                            <td className="px-6 py-5 text-sm text-gray-700 font-medium">
                               {formatDate(borrow.borrowDate)}
                             </td>
-                            <td className="px-6 py-4 text-sm text-gray-900">
+                            <td className="px-6 py-5 text-sm text-gray-700 font-medium">
                               {formatDate(borrow.dueDate)}
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-6 py-5">
                               {isBookOverdue ? (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                  <AlertCircle className="w-3 h-3 mr-1" />
+                                <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-red-100 text-red-800 shadow-sm">
+                                  <AlertCircle className="w-3.5 h-3.5 mr-1.5" />
                                   Overdue ({Math.abs(daysRemaining)} days)
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                  <CheckCircle className="w-3 h-3 mr-1" />
+                                <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-green-100 text-green-800 shadow-sm">
+                                  <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
                                   {daysRemaining} days left
                                 </span>
                               )}
                             </td>
-                            <td className="px-6 py-4 text-sm text-gray-900">
-                              {borrow.fineAmount ? `$${borrow.fineAmount}` : '-'}
+                            <td className="px-6 py-5 text-sm font-bold text-gray-900">
+                              {borrow.fineAmount ? (
+                                <span className="text-red-600">${borrow.fineAmount}</span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
                             </td>
-                            <td className="px-6 py-4 text-sm font-medium">
+                            <td className="px-6 py-5">
                               <div className="flex space-x-2">
                                 <button
                                   onClick={() => handleViewDetails(borrow.id)}
-                                  className="text-blue-600 hover:text-blue-900 flex items-center"
+                                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                                   title="View Details"
                                 >
                                   <Eye className="w-4 h-4" />
@@ -523,10 +586,9 @@ const BorrowsPage: React.FC = () => {
                                 <button
                                   onClick={() => handleReturnBook(borrow.id)}
                                   disabled={returningBookId === borrow.id}
-                                  className="text-green-600 hover:text-green-900 flex items-center disabled:opacity-50"
+                                  className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
                                   title="Return Book"
                                 >
-                                  
                                   {returningBookId === borrow.id ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />
                                   ) : (
@@ -537,7 +599,7 @@ const BorrowsPage: React.FC = () => {
                                   <button
                                     onClick={() => handlePayFine(borrow.id, borrow.fineAmount!, borrow.title)}
                                     disabled={payingBorrowId === borrow.id}
-                                    className="text-yellow-600 hover:text-yellow-900 flex items-center disabled:opacity-50"
+                                    className="p-2 text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors disabled:opacity-50"
                                     title="Pay Fine"
                                   >
                                     {payingBorrowId === borrow.id ? (
@@ -555,10 +617,12 @@ const BorrowsPage: React.FC = () => {
                     </tbody>
                   </table>
                 ) : (
-                  <div className="text-center py-12">
-                    <Book className="mx-auto h-12 w-12 text-gray-400" />
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">No borrowed books</h3>
-                    <p className="mt-1 text-sm text-gray-500">You don't have any books currently borrowed.</p>
+                  <div className="text-center py-16 px-6">
+                    <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full mb-4">
+                      <CheckCircle className="h-10 w-10 text-green-600" />
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">No borrowed books</h3>
+                    <p className="text-gray-600 max-w-sm mx-auto">You don't have any books currently borrowed. Visit the books page to start borrowing!</p>
                   </div>
                 )}
               </div>
@@ -567,64 +631,75 @@ const BorrowsPage: React.FC = () => {
 
           {/* Borrowing History Section */}
           {!loading && borrowHistory.length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-900">Borrowing History</h2>
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+              <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-5">
+                <h2 className="text-2xl font-bold text-white flex items-center">
+                  <Calendar className="h-6 w-6 mr-3" />
+                  Borrowing History
+                </h2>
+                <p className="text-indigo-100 text-sm mt-1">Your past book returns and ratings</p>
               </div>
               
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                  <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                         Book Details
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                         Borrow Date
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                         Return Date
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                         Status
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white divide-y divide-gray-100">
                     {borrowHistory.map(borrow => (
-                      <tr key={borrow.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">{borrow.title}</div>
-                            <div className="text-sm text-gray-500">by {borrow.author}</div>
-                            <div className="text-xs text-gray-400">{borrow.publisher}</div>
+                      <tr key={borrow.id} className="hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 transition-all duration-200">
+                        <td className="px-6 py-5">
+                          <div className="flex items-center">
+                            <div className="h-12 w-12 flex-shrink-0 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-lg flex items-center justify-center mr-4">
+                              <Book className="h-6 w-6 text-indigo-600" />
+                            </div>
+                            <div>
+                              <div className="text-sm font-bold text-gray-900">{borrow.title}</div>
+                              <div className="text-sm text-gray-600 font-medium">by {borrow.author}</div>
+                              <div className="text-xs text-gray-500">{borrow.publisher}</div>
+                            </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
+                        <td className="px-6 py-5 text-sm text-gray-700 font-medium">
                           {formatDate(borrow.borrowDate)}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
+                        <td className="px-6 py-5 text-sm text-gray-700 font-medium">
                           {borrow.returnDate ? formatDate(borrow.returnDate) : '-'}
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-5">
                           {borrow.fineAmount && borrow.fineAmount > 0 ? (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold bg-red-100 text-red-800 shadow-sm">
+                              <AlertCircle className="w-3.5 h-3.5 mr-1.5" />
                               Late - Fine: ${borrow.fineAmount}
                             </span>
                           ) : (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold bg-green-100 text-green-800 shadow-sm">
+                              <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
                               Returned on time
                             </span>
                           )}
                         </td>
-                        <td className="px-6 py-4 text-sm font-medium">
+                        <td className="px-6 py-5">
                           <div className="flex space-x-2">
                             <button
                               onClick={() => handleRateBook(borrow)}
-                              className="text-yellow-600 hover:text-yellow-900 flex items-center"
+                              className="p-2 text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors"
                               title="Rate Book"
                             >
                               <Star className="w-4 h-4" />
@@ -633,7 +708,7 @@ const BorrowsPage: React.FC = () => {
                               <button
                                 onClick={() => handlePayFine(borrow.id, borrow.fineAmount!, borrow.title)}
                                 disabled={payingBorrowId === borrow.id}
-                                className="text-green-600 hover:text-green-900 flex items-center disabled:opacity-50"
+                                className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
                                 title="Pay Fine"
                               >
                                 {payingBorrowId === borrow.id ? (
@@ -655,17 +730,16 @@ const BorrowsPage: React.FC = () => {
 
           {/* Pagination */}
           {pageInfo && pageInfo.totalPages > 1 && (
-            <div className="flex items-center justify-center bg-white px-4 py-3 border border-gray-200 rounded-lg mt-8">
-              <nav className="flex items-center space-x-1" aria-label="Pagination">
+            <div className="flex items-center justify-center bg-white px-6 py-4 border border-gray-100 rounded-2xl mt-8 shadow-lg">
+              <nav className="flex items-center space-x-2" aria-label="Pagination">
                 <button
                   onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                   disabled={currentPage <= 1}
-                  className="relative inline-flex items-center px-2 py-2 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="relative inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <ChevronLeft className="h-5 w-5" />
                 </button>
 
-                {/* Page numbers logic similar to BooksPage */}
                 {(() => {
                   const pages = [];
                   const totalPages = pageInfo.totalPages;
@@ -677,10 +751,10 @@ const BorrowsPage: React.FC = () => {
                       <button
                         key={i}
                         onClick={() => setCurrentPage(i)}
-                        className={`relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-md ${
+                        className={`relative inline-flex items-center px-4 py-2 text-sm font-bold rounded-lg transition-all ${
                           i === currentPage
-                            ? 'bg-blue-600 text-white shadow-sm'
-                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg'
+                            : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
                         }`}
                       >
                         {i}
@@ -693,7 +767,7 @@ const BorrowsPage: React.FC = () => {
                 <button
                   onClick={() => setCurrentPage(Math.min(pageInfo.totalPages, currentPage + 1))}
                   disabled={currentPage >= pageInfo.totalPages}
-                  className="relative inline-flex items-center px-2 py-2 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="relative inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <ChevronRight className="h-5 w-5" />
                 </button>
@@ -705,18 +779,20 @@ const BorrowsPage: React.FC = () => {
 
       {/* Borrow Detail Modal */}
       {showDetailModal && selectedBorrow && (
-        <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-auto border border-gray-100 relative max-h-[90vh] overflow-y-auto" style={{ zIndex: 10000 }}>
+        <div className="fixed inset-0 flex items-center justify-center p-4  bg-opacity-50  animate-in fade-in duration-300" style={{ zIndex: 9999 }}>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl mx-auto border border-gray-100 relative max-h-[90vh] overflow-y-auto transform transition-all animate-in zoom-in-95 duration-300">
             {/* Modal Header */}
-            <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4 rounded-t-2xl">
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6 rounded-t-3xl">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <Book className="h-5 w-5 text-white mr-2" />
-                  <h3 className="text-lg font-bold text-white">Borrow Details</h3>
+                  <div className="h-10 w-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-3">
+                    <Book className="h-6 w-6 text-white bg-gradient-to-r from-blue-600 to-indigo-600 p-1 rounded-lg" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white">Borrow Details</h3>
                 </div>
                 <button
                   onClick={closeDetailModal}
-                  className="text-white hover:text-gray-200 p-1"
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-1.5 transition-colors"
                 >
                   <XCircle className="h-5 w-5" />
                 </button>
@@ -724,104 +800,117 @@ const BorrowsPage: React.FC = () => {
             </div>
             
             {/* Modal Content */}
-            <div className="p-4">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="p-8">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Book Information */}
-                <div>
-                  <h4 className="text-base font-semibold text-gray-900 mb-3">Book Information</h4>
-                  <div className="space-y-2">
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
+                  <h4 className="text-base font-bold text-gray-900 mb-4 flex items-center">
+                    <Book className="h-5 w-5 mr-2 text-blue-600" />
+                    Book Information
+                  </h4>
+                  <div className="space-y-3">
                     <div>
-                      <label className="text-xs font-medium text-gray-600">Title</label>
-                      <p className="text-sm text-gray-900">{selectedBorrow.books.title}</p>
+                      <label className="text-xs font-bold text-gray-600 uppercase">Title</label>
+                      <p className="text-sm text-gray-900 font-medium mt-1">{selectedBorrow.books.title}</p>
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-gray-600">Author</label>
-                      <p className="text-sm text-gray-900">{selectedBorrow.books.author}</p>
+                      <label className="text-xs font-bold text-gray-600 uppercase">Author</label>
+                      <p className="text-sm text-gray-900 font-medium mt-1">{selectedBorrow.books.author}</p>
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-gray-600">Publisher</label>
-                      <p className="text-sm text-gray-900">{selectedBorrow.books.publisher}</p>
+                      <label className="text-xs font-bold text-gray-600 uppercase">Publisher</label>
+                      <p className="text-sm text-gray-900 font-medium mt-1">{selectedBorrow.books.publisher}</p>
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-gray-600">ISBN</label>
-                      <p className="text-sm text-gray-900">{selectedBorrow.books.isbn}</p>
+                      <label className="text-xs font-bold text-gray-600 uppercase">ISBN</label>
+                      <p className="text-sm text-gray-900 font-medium mt-1">{selectedBorrow.books.isbn}</p>
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-gray-600">Genre</label>
-                      <p className="text-sm text-gray-900">{selectedBorrow.books.genre}</p>
+                      <label className="text-xs font-bold text-gray-600 uppercase">Genre</label>
+                      <p className="text-sm text-gray-900 font-medium mt-1">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-100 text-blue-800">
+                          {selectedBorrow.books.genre}
+                        </span>
+                      </p>
                     </div>
                   </div>
                 </div>
 
                 {/* Borrow Information */}
-                <div>
-                  <h4 className="text-base font-semibold text-gray-900 mb-3">Borrow Information</h4>
-                  <div className="space-y-2">
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-100">
+                  <h4 className="text-base font-bold text-gray-900 mb-4 flex items-center">
+                    <Calendar className="h-5 w-5 mr-2 text-purple-600" />
+                    Borrow Information
+                  </h4>
+                  <div className="space-y-3">
                     <div>
-                      <label className="text-xs font-medium text-gray-600">Borrow Date</label>
-                      <p className="text-sm text-gray-900">{formatDate(selectedBorrow.borrowDate)}</p>
+                      <label className="text-xs font-bold text-gray-600 uppercase">Borrow Date</label>
+                      <p className="text-sm text-gray-900 font-medium mt-1">{formatDate(selectedBorrow.borrowDate)}</p>
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-gray-600">Due Date</label>
-                      <p className="text-sm text-gray-900">{formatDate(selectedBorrow.dueDate)}</p>
+                      <label className="text-xs font-bold text-gray-600 uppercase">Due Date</label>
+                      <p className="text-sm text-gray-900 font-medium mt-1">{formatDate(selectedBorrow.dueDate)}</p>
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-gray-600">Return Date</label>
-                      <p className="text-sm text-gray-900">
+                      <label className="text-xs font-bold text-gray-600 uppercase">Return Date</label>
+                      <p className="text-sm text-gray-900 font-medium mt-1">
                         {selectedBorrow.returnDate ? formatDate(selectedBorrow.returnDate) : 'Not returned yet'}
                       </p>
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-gray-600">Status</label>
-                      <div className="mt-1">
+                      <label className="text-xs font-bold text-gray-600 uppercase">Status</label>
+                      <div className="mt-2">
                         {selectedBorrow.isReturned ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            <CheckCircle className="w-3 h-3 mr-1" />
+                          <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold bg-green-100 text-green-800 shadow-sm">
+                            <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
                             Returned
                           </span>
                         ) : isOverdue(selectedBorrow.dueDate, selectedBorrow.isReturned) ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            <AlertCircle className="w-3 h-3 mr-1" />
+                          <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold bg-red-100 text-red-800 shadow-sm">
+                            <AlertCircle className="w-3.5 h-3.5 mr-1.5" />
                             Overdue
                           </span>
                         ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            <Calendar className="w-3 h-3 mr-1" />
+                          <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-100 text-blue-800 shadow-sm">
+                            <Calendar className="w-3.5 h-3.5 mr-1.5" />
                             Active
                           </span>
                         )}
                       </div>
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-gray-600">Fine Amount</label>
-                      <p className="text-sm text-gray-900">
+                      <label className="text-xs font-bold text-gray-600 uppercase">Fine Amount</label>
+                      <p className="text-sm font-bold mt-1">
                         {selectedBorrow.fineAmount !== null && selectedBorrow.fineAmount > 0 
-                          ? `$${selectedBorrow.fineAmount.toFixed(2)}` 
-                          : 'No fine'}
+                          ? <span className="text-red-600">${selectedBorrow.fineAmount.toFixed(2)}</span>
+                          : <span className="text-green-600">No fine</span>}
                       </p>
                     </div>
                   </div>
                 </div>
 
                 {/* User Information */}
-                <div>
-                  <h4 className="text-base font-semibold text-gray-900 mb-3">Borrower Information</h4>
-                  <div className="space-y-2">
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border border-green-100">
+                  <h4 className="text-base font-bold text-gray-900 mb-4 flex items-center">
+                    <CheckCircle className="h-5 w-5 mr-2 text-green-600" />
+                    Borrower Information
+                  </h4>
+                  <div className="space-y-3">
                     <div>
-                      <label className="text-xs font-medium text-gray-600">Full Name</label>
-                      <p className="text-sm text-gray-900">{selectedBorrow.users.fullName}</p>
+                      <label className="text-xs font-bold text-gray-600 uppercase">Full Name</label>
+                      <p className="text-sm text-gray-900 font-medium mt-1">{selectedBorrow.users.fullName}</p>
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-gray-600">Username</label>
-                      <p className="text-sm text-gray-900">{selectedBorrow.users.username}</p>
+                      <label className="text-xs font-bold text-gray-600 uppercase">Username</label>
+                      <p className="text-sm text-gray-900 font-medium mt-1">{selectedBorrow.users.username}</p>
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-gray-600">Phone Number</label>
-                      <p className="text-sm text-gray-900">{selectedBorrow.users.phoneNumber}</p>
+                      <label className="text-xs font-bold text-gray-600 uppercase">Phone Number</label>
+                      <p className="text-sm text-gray-900 font-medium mt-1">{selectedBorrow.users.phoneNumber}</p>
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-gray-600">Address</label>
-                      <p className="text-sm text-gray-900">{selectedBorrow.users.address}</p>
+                      <label className="text-xs font-bold text-gray-600 uppercase">Address</label>
+                      <p className="text-sm text-gray-900 font-medium mt-1">{selectedBorrow.users.address}</p>
                     </div>
                   </div>
                 </div>
@@ -829,10 +918,10 @@ const BorrowsPage: React.FC = () => {
 
               {/* Action Buttons */}
               {!selectedBorrow.isReturned && (
-                <div className="flex justify-end space-x-3 pt-4 border-t border-gray-100 mt-4">
+                <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200 mt-6">
                   <button
                     onClick={closeDetailModal}
-                    className="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200"
+                    className="px-6 py-2.5 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200 hover:shadow-md"
                   >
                     Close
                   </button>
@@ -844,14 +933,19 @@ const BorrowsPage: React.FC = () => {
                       }
                     }}
                     disabled={!currentBorrowId || returningBookId === currentBorrowId}
-                    className="px-4 py-2 text-sm font-semibold text-white bg-green-500 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors duration-200 flex items-center"
+                    className="px-6 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center"
                   >
                     {returningBookId === currentBorrowId ? (
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        Returning...
+                      </>
                     ) : (
-                      <RotateCcw className="w-4 h-4 mr-2" />
+                      <>
+                        <RotateCcw className="w-4 h-4 mr-2" />
+                        Return Book
+                      </>
                     )}
-                    Return Book
                   </button>
                 </div>
               )}
@@ -862,18 +956,20 @@ const BorrowsPage: React.FC = () => {
 
       {/* Rating Modal */}
       {showRatingModal && selectedBookForRating && (
-        <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto border border-gray-100 relative">
+        <div className="fixed inset-0 flex items-center justify-center p-4  animate-in fade-in duration-300" style={{ zIndex: 9999 }}>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md mx-auto border border-gray-100 relative transform transition-all animate-in zoom-in-95 duration-300">
             {/* Modal Header */}
-            <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 px-6 py-4 rounded-t-2xl">
+            <div className="bg-gradient-to-r from-yellow-500 to-amber-600 px-8 py-6 rounded-t-3xl">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <Star className="h-5 w-5 text-white mr-2" />
-                  <h3 className="text-lg font-bold text-white">Rate Book</h3>
+                  <div className="h-10 w-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-3">
+                    <Star className="h-6 w-6 text-gray-900" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white">Rate Book</h3>
                 </div>
                 <button
                   onClick={closeRatingModal}
-                  className="text-white hover:text-gray-200 p-1"
+                  className="text-white hover:bg-gray-500 hover:bg-opacity-20 rounded-lg p-1.5 transition-colors"
                 >
                   <XCircle className="h-5 w-5" />
                 </button>
@@ -881,19 +977,19 @@ const BorrowsPage: React.FC = () => {
             </div>
             
             {/* Modal Content */}
-            <div className="p-6">
+            <div className="p-8">
               {/* Book Info */}
-              <div className="mb-6">
-                <h4 className="font-medium text-gray-900 mb-1">{selectedBookForRating.title}</h4>
-                <p className="text-sm text-gray-600">by {selectedBookForRating.author}</p>
+              <div className="mb-6 bg-gradient-to-br from-yellow-50 to-amber-50 rounded-xl p-4 border border-yellow-200">
+                <h4 className="font-bold text-gray-900 mb-1 text-lg">{selectedBookForRating.title}</h4>
+                <p className="text-sm text-gray-700 font-medium">by {selectedBookForRating.author}</p>
               </div>
 
               {/* Star Rating */}
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-bold text-gray-900 mb-3">
                   Your Rating
                 </label>
-                <div className="flex items-center space-x-1">
+                <div className="flex items-center justify-center space-x-2 bg-gray-50 rounded-xl p-4">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
                       key={star}
@@ -901,56 +997,162 @@ const BorrowsPage: React.FC = () => {
                       onMouseEnter={() => setHoverRating(star)}
                       onMouseLeave={() => setHoverRating(0)}
                       onClick={() => setRating(star)}
-                      className="p-1 transition-colors"
+                      className="p-1 transition-all transform hover:scale-110"
                     >
                       <Star
-                        className={`w-8 h-8 ${
+                        className={`w-10 h-10 transition-all ${
                           star <= (hoverRating || rating)
-                            ? 'text-yellow-400 fill-current'
+                            ? 'text-yellow-400 fill-current drop-shadow-md'
                             : 'text-gray-300'
                         }`}
                       />
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-gray-500 mt-1">Click to rate</p>
+                <p className="text-xs text-gray-500 mt-2 text-center font-medium">Click to rate</p>
               </div>
 
               {/* Review */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="mb-8">
+                <label className="block text-sm font-bold text-gray-900 mb-3">
                   Review (Optional)
                 </label>
                 <textarea
                   value={review}
                   onChange={(e) => setReview(e.target.value)}
                   rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 resize-none"
+                  className="w-full px-4 py-3 border-2 border-gray-200 text-gray-900 rounded-xl focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 resize-none font-medium"
                   placeholder="Share your thoughts about this book..."
                   maxLength={500}
                 />
-                <p className="text-xs text-gray-500 mt-1">{review.length}/500 characters</p>
+                <p className="text-xs text-gray-500 mt-2 font-medium">{review.length}/500 characters</p>
               </div>
 
               {/* Action Buttons */}
               <div className="flex justify-end space-x-3">
                 <button
                   onClick={closeRatingModal}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                  className="px-6 py-2.5 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200 hover:shadow-md"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={submitRating}
                   disabled={rating === 0 || submittingRating}
-                  className="px-4 py-2 text-sm font-medium text-white bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors flex items-center"
+                  className="px-6 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center"
                 >
                   {submittingRating ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Submitting...
+                    </>
                   ) : (
-                    <Star className="w-4 h-4 mr-2" />
+                    <>
+                      <Star className="w-4 h-4 mr-2" />
+                      Submit Rating
+                    </>
                   )}
-                  Submit Rating
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pay Fine Confirmation Modal */}
+      {showPayFineModal && selectedFinePayment && (
+        <div className="fixed inset-0 flex items-center justify-center p-4 animate-in fade-in duration-300" style={{ zIndex: 9999 }}>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md mx-auto border border-gray-100 relative transform transition-all animate-in zoom-in-95 duration-300">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-8 py-6 rounded-t-3xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="h-10 w-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-3">
+                    <HandCoins className="h-6 w-6 text-green-600" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white">Pay Fine</h3>
+                </div>
+                <button
+                  onClick={cancelPayFine}
+                  className="text-white  hover:bg-gray-400 rounded-lg p-1.5 transition-colors"
+                >
+                  <XCircle className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+            
+            {/* Modal Content */}
+            <div className="p-8">
+              {/* Book Info */}
+              <div className="mb-6 bg-gradient-to-br from-yellow-50 to-amber-50 rounded-xl p-5 border border-yellow-200">
+                <div className="flex items-start">
+                  <div className="h-12 w-12 flex-shrink-0 bg-gradient-to-br from-yellow-500 to-amber-600 rounded-lg flex items-center justify-center mr-4">
+                    <Book className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-gray-900 mb-1 text-lg">{selectedFinePayment.bookTitle}</h4>
+                    <p className="text-sm text-gray-700 font-medium">Overdue fine payment</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Fine Amount */}
+              <div className="mb-6 bg-gradient-to-br from-red-50 to-rose-50 rounded-xl p-6 border border-red-200">
+                <div className="text-center">
+                  <p className="text-sm text-red-700 font-medium mb-2">Amount Due</p>
+                  <div className="text-4xl font-bold text-red-600">
+                    ${selectedFinePayment.fineAmount.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Info */}
+              <div className="mb-8 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                <h4 className="text-sm font-bold text-blue-900 mb-3 flex items-center">
+                  <AlertCircle className="h-4 w-4 mr-2" />
+                  Payment Information
+                </h4>
+                <ul className="text-sm text-blue-800 space-y-2 font-medium">
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>You will be redirected to Khalti payment gateway</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>Payment is secure and encrypted</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>Your fine will be cleared after successful payment</span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={cancelPayFine}
+                  disabled={payingBorrowId === selectedFinePayment.borrowId}
+                  className="px-6 py-2.5 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200 hover:shadow-md disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmPayFine}
+                  disabled={payingBorrowId === selectedFinePayment.borrowId}
+                  className="px-6 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center"
+                >
+                  {payingBorrowId === selectedFinePayment.borrowId ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <HandCoins className="w-4 h-4 mr-2" />
+                      Proceed to Payment
+                    </>
+                  )}
                 </button>
               </div>
             </div>

@@ -157,7 +157,7 @@ const MembershipPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
       {/* Header with Navigation Tabs */}
       <UserHeader 
         username={user?.username || 'User'} 
@@ -165,22 +165,24 @@ const MembershipPage: React.FC = () => {
       />
 
       {/* Main Content */}
-      <main className="pt-20 pb-8">
+      <main className="pt-24 pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Page Header */}
-          {/* <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Your Membership</h1>
-            <p className="mt-2 text-gray-600">Manage your library membership and view benefits</p>
-          </div> */}
+          {/* Page Title */}
+          <div className="mb-8">
+            {/* <h1 className="text-3xl font-bold text-gray-900 mb-2">Your Membership</h1> */}
+            <p className="text-gray-600 text-center">Manage your library membership and view benefits</p>
+          </div>
 
           {/* Error Message */}
           {error && (
-            <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-center">
-              <AlertCircle className="h-5 w-5 text-red-500 mr-3" />
-              <span className="text-red-700">{error}</span>
+            <div className="mb-6 bg-red-50 border-l-4 border-red-500 rounded-r-xl p-4 flex items-center shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="flex-shrink-0">
+                <AlertCircle className="h-5 w-5 text-red-500" />
+              </div>
+              <span className="ml-3 text-red-700 flex-1">{error}</span>
               <button 
                 onClick={() => setError(null)}
-                className="ml-auto text-red-500 hover:text-red-700"
+                className="ml-4 text-red-400 hover:text-red-600 transition-colors"
               >
                 ×
               </button>
@@ -189,21 +191,26 @@ const MembershipPage: React.FC = () => {
 
           {/* Loading State */}
           {loading && (
-            <div className="flex justify-center items-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-              <span className="ml-2 text-gray-600">Loading membership information...</span>
+            <div className="flex flex-col justify-center items-center py-20">
+              <div className="relative">
+                <div className="absolute inset-0 bg-blue-400 rounded-full blur-xl opacity-20 animate-pulse"></div>
+                <Loader2 className="h-12 w-12 animate-spin text-blue-600 relative" />
+              </div>
+              <span className="mt-4 text-gray-600 font-medium">Loading membership information...</span>
             </div>
           )}
 
           {/* No Membership Found */}
           {!loading && !membership && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
-              <CreditCard className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No Membership Found</h3>
-              <p className="text-gray-600 mb-6">You don't have an active membership. Create one to start borrowing books!</p>
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-12 text-center">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full mb-6">
+                <CreditCard className="h-10 w-10 text-blue-600" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">No Membership Found</h3>
+              <p className="text-gray-600 mb-8 max-w-md mx-auto">You don't have an active membership yet. Create one now to start borrowing books and accessing library resources!</p>
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200"
+                className="inline-flex items-center px-8 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
               >
                 <Plus className="w-5 h-5 mr-2" />
                 Create Membership
@@ -213,166 +220,248 @@ const MembershipPage: React.FC = () => {
 
           {/* Membership Details */}
           {!loading && membership && (
-            <>
+            <div className="space-y-6">
               {/* Membership Card */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-                <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg text-white p-6">
+              <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden transform transition-all duration-300 hover:shadow-xl">
+                <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white p-8">
                   <div className="flex justify-between items-start">
-                    <div>
-                      <div className="text-blue-200 text-sm mb-1">Membership ID</div>
-                      <div className="text-xl font-semibold mb-4">LIB-{membership.id.toString().padStart(6, '0')}</div>
-                      
-                      <div className="text-blue-200 text-sm mb-1">Member Name</div>
-                      <div className="text-lg font-medium mb-4">{user?.username || 'User'}</div>
-                      
-                      <div className="flex space-x-8">
-                        <div>
-                          <div className="text-blue-200 text-sm">Valid From</div>
-                          <div>{formatDate(membership.dateOfIssue)}</div>
+                    <div className="flex-1">
+                      <div className="flex items-center mb-6">
+                        <div className="h-14 w-14 bg-white rounded-xl flex items-center justify-center mr-4 backdrop-blur-sm shadow-lg">
+                          <CreditCard className="h-7 w-7 text-black drop-shadow-md" />
                         </div>
                         <div>
-                          <div className="text-blue-200 text-sm">Valid Until</div>
-                          <div>{formatDate(membership.expiryDate)}</div>
+                          <div className="text-white text-sm font-semibold mb-1 drop-shadow-sm">Membership ID</div>
+                          <div className="text-2xl font-bold tracking-wide drop-shadow-md">LIB-{membership.id.toString().padStart(6, '0')}</div>
+                        </div>
+                      </div>
+                      
+                      <div className="mb-6">
+                        <div className="text-white text-sm font-semibold mb-2 drop-shadow-sm">Member Name</div>
+                        <div className="text-xl font-bold flex items-center drop-shadow-md">
+                          <User className="h-5 w-5 mr-2 drop-shadow-sm" />
+                          {user?.username || 'User'}
+                        </div>
+                      </div>
+                      
+                      <div className="flex space-x-8">
+                        <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-lg px-4 py-3 shadow-lg border border-white border-opacity-30">
+                          <div className="text-black text-xs font-semibold mb-1 flex items-center drop-shadow-sm">
+                            <Calendar className="h-3.5 w-3.5 mr-1 drop-shadow-sm" />
+                            Valid From
+                          </div>
+                          <div className="font-bold text-md drop-shadow-md text-black">{formatDate(membership.dateOfIssue)}</div>
+                        </div>
+                        <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-lg px-4 py-3 shadow-lg border border-white border-opacity-30">
+                          <div className="text-black text-xs font-semibold mb-1 flex items-center drop-shadow-sm">
+                            <Calendar className="h-3.5 w-3.5 mr-1 drop-shadow-sm " />
+                            Valid Until
+                          </div>
+                          <div className="font-bold text-md drop-shadow-md text-black">{formatDate(membership.expiryDate)}</div>
                         </div>
                       </div>
                     </div>
                     
                     <div className="text-right">
-                      <div className="mb-2">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(membership.membershipStatus)}`}>
+                      <div className="mb-4">
+                        <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-bold shadow-lg ${getStatusColor(membership.membershipStatus)}`}>
+                          <CheckCircle className="h-4 w-4 mr-2" />
                           {membership.membershipStatus}
                         </span>
                       </div>
-                      <div className="text-sm text-blue-100">Membership Type</div>
-                      <div className="text-xl font-bold">{membership.membershipType}</div>
+                      <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl px-5 py-4 shadow-lg border border-white border-opacity-30">
+                        <div className="text-black text-xs font-semibold mb-1 drop-shadow-sm">Membership Type</div>
+                        <div className="text-2xl font-bold drop-shadow-md text-black">{membership.membershipType}</div>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
               
               {/* Membership Details */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-6">Membership Details</h3>
+              <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-5">
+                  <h3 className="text-2xl font-bold text-white flex items-center">
+                    <CreditCard className="h-6 w-6 mr-3" />
+                    Membership Details
+                  </h3>
+                  <p className="text-indigo-100 text-sm mt-1">Your membership information and privileges</p>
+                </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h4 className="font-medium text-gray-700 mb-4">Borrowing Privileges</h4>
-                    <div className="space-y-3">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Maximum borrow limit:</span>
-                        <span className="font-medium text-gray-900">{membership.borrowingLimit} books</span>
+                <div className="p-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
+                      <h4 className="font-bold text-gray-900 mb-5 text-lg flex items-center">
+                        <div className="h-8 w-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3">
+                          <CheckCircle className="h-4 w-4 text-white" />
+                        </div>
+                        Borrowing Privileges
+                      </h4>
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center bg-white rounded-lg p-3 shadow-sm">
+                          <span className="text-gray-600 font-medium">Maximum borrow limit</span>
+                          <span className="font-bold text-gray-900 text-lg">{membership.borrowingLimit} books</span>
+                        </div>
+                        <div className="flex justify-between items-center bg-white rounded-lg p-3 shadow-sm">
+                          <span className="text-gray-600 font-medium">Membership Type</span>
+                          <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm ${getMembershipTypeColor(membership.membershipType)}`}>
+                            {membership.membershipType}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Membership Type:</span>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getMembershipTypeColor(membership.membershipType)}`}>
-                          {membership.membershipType}
-                        </span>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-100">
+                      <h4 className="font-bold text-gray-900 mb-5 text-lg flex items-center">
+                        <div className="h-8 w-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center mr-3">
+                          <Calendar className="h-4 w-4 text-white" />
+                        </div>
+                        Membership Information
+                      </h4>
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center bg-white rounded-lg p-3 shadow-sm">
+                          <span className="text-gray-600 font-medium">Date of Issue</span>
+                          <span className="font-bold text-gray-900">{formatDate(membership.dateOfIssue)}</span>
+                        </div>
+                        <div className="flex justify-between items-center bg-white rounded-lg p-3 shadow-sm">
+                          <span className="text-gray-600 font-medium">Expiry Date</span>
+                          <span className="font-bold text-gray-900">{formatDate(membership.expiryDate)}</span>
+                        </div>
+                        <div className="flex justify-between items-center bg-white rounded-lg p-3 shadow-sm">
+                          <span className="text-gray-600 font-medium">Status</span>
+                          <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm ${getStatusColor(membership.membershipStatus)}`}>
+                            {membership.membershipStatus}
+                          </span>
+                        </div>
+                        {membership.updatedAt && (
+                          <div className="flex justify-between items-center bg-white rounded-lg p-3 shadow-sm">
+                            <span className="text-gray-600 font-medium">Last Updated</span>
+                            <span className="font-bold text-gray-900">{formatDate(membership.updatedAt)}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
                   
-                  <div>
-                    <h4 className="font-medium text-gray-700 mb-4">Membership Information</h4>
-                    <div className="space-y-3">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Date of Issue:</span>
-                        <span className="font-medium text-gray-900">{formatDate(membership.dateOfIssue)}</span>
+                  <div className="mt-8 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl p-6 border border-gray-200">
+                    <h4 className="font-bold text-gray-900 mb-4 text-lg flex items-center">
+                      <div className="h-8 w-8 bg-gradient-to-br from-gray-700 to-slate-800 rounded-lg flex items-center justify-center mr-3">
+                        <CheckCircle className="h-4 w-4 text-white" />
                       </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Expiry Date:</span>
-                        <span className="font-medium text-gray-900">{formatDate(membership.expiryDate)}</span>
+                      Membership Benefits
+                    </h4>
+                    <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <li className="flex items-start bg-white rounded-lg p-3 shadow-sm">
+                        <CheckCircle className="h-5 w-5 text-green-500 mr-3 flex-shrink-0 mt-0.5" />
+                        <span className="text-gray-700 font-medium">Access to physical and digital library resources</span>
+                      </li>
+                      <li className="flex items-start bg-white rounded-lg p-3 shadow-sm">
+                        <CheckCircle className="h-5 w-5 text-green-500 mr-3 flex-shrink-0 mt-0.5" />
+                        <span className="text-gray-700 font-medium">Participation in book clubs and literary events</span>
+                      </li>
+                      <li className="flex items-start bg-white rounded-lg p-3 shadow-sm">
+                        <CheckCircle className="h-5 w-5 text-green-500 mr-3 flex-shrink-0 mt-0.5" />
+                        <span className="text-gray-700 font-medium">Early access to new book releases</span>
+                      </li>
+                      <li className="flex items-start bg-white rounded-lg p-3 shadow-sm">
+                        <CheckCircle className="h-5 w-5 text-green-500 mr-3 flex-shrink-0 mt-0.5" />
+                        <span className="text-gray-700 font-medium">Extended borrowing periods for research materials</span>
+                      </li>
+                      {membership.membershipType === 'PREMIUM' && (
+                        <li className="flex items-start bg-white rounded-lg p-3 shadow-sm">
+                          <CheckCircle className="h-5 w-5 text-green-500 mr-3 flex-shrink-0 mt-0.5" />
+                          <span className="text-gray-700 font-medium">Priority access to academic resources and journals</span>
+                        </li>
+                      )}
+                      {membership.membershipType === 'STUDENT' && (
+                        <li className="flex items-start bg-white rounded-lg p-3 shadow-sm">
+                          <CheckCircle className="h-5 w-5 text-green-500 mr-3 flex-shrink-0 mt-0.5" />
+                          <span className="text-gray-700 font-medium">Access to study rooms and group discussion areas</span>
+                        </li>
+                      )}
+                      {membership.membershipType === 'REGULAR' && (
+                        <li className="flex items-start bg-white rounded-lg p-3 shadow-sm">
+                          <CheckCircle className="h-5 w-5 text-green-500 mr-3 flex-shrink-0 mt-0.5" />
+                          <span className="text-gray-700 font-medium">Standard library privileges and services</span>
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+
+                  {/* Membership Status Alert */}
+                  {membership.membershipStatus === 'EXPIRED' && (
+                    <div className="mt-6 p-5 bg-gradient-to-r from-red-50 to-rose-50 border-l-4 border-red-500 rounded-r-xl shadow-sm">
+                      <div className="flex items-center mb-2">
+                        <div className="h-8 w-8 bg-red-100 rounded-lg flex items-center justify-center mr-3">
+                          <AlertCircle className="h-5 w-5 text-red-600" />
+                        </div>
+                        <span className="text-red-900 font-bold text-lg">Membership Expired</span>
                       </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Status:</span>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(membership.membershipStatus)}`}>
-                          {membership.membershipStatus}
+                      <p className="text-red-700 ml-11 font-medium">
+                        Your membership expired on {formatDate(membership.expiryDate)}. Please renew to continue borrowing books and accessing library resources.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Days until expiry */}
+                  {membership.membershipStatus === 'ACTIVE' && (
+                    <div className="mt-6 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 rounded-r-xl shadow-sm">
+                      <div className="flex items-center">
+                        <div className="h-8 w-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                          <Calendar className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <span className="text-blue-900 font-bold text-lg">
+                          {(() => {
+                            const today = new Date();
+                            const expiry = new Date(membership.expiryDate);
+                            const diffTime = expiry.getTime() - today.getTime();
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            
+                            if (diffDays <= 0) return 'Membership has expired';
+                            if (diffDays <= 30) return `Membership expires in ${diffDays} days`;
+                            return `Membership valid for ${diffDays} more days`;
+                          })()}
                         </span>
                       </div>
-                      {membership.updatedAt && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-500">Last Updated:</span>
-                          <span className="font-medium text-gray-900">{formatDate(membership.updatedAt)}</span>
-                        </div>
-                      )}
                     </div>
-                  </div>
+                  )}
                 </div>
-                
-                <div className="mt-6 pt-6 border-t border-gray-200">
-                  <h4 className="font-medium text-gray-700 mb-3">Membership Benefits</h4>
-                  <ul className="list-disc list-inside space-y-2 text-sm text-gray-600">
-                    <li>Access to physical and digital library resources</li>
-                    <li>Participation in book clubs and literary events</li>
-                    <li>Early access to new book releases</li>
-                    <li>Extended borrowing periods for research materials</li>
-                    {membership.membershipType === 'PREMIUM' && (
-                      <li>Priority access to academic resources and journals</li>
-                    )}
-                    {membership.membershipType === 'STUDENT' && (
-                      <li>Access to study rooms and group discussion areas</li>
-                    )}
-                    {membership.membershipType === 'REGULAR' && (
-                      <li>Standard library privileges and services</li>
-                    )}
-                  </ul>
-                </div>
-
-                {/* Membership Status Alert */}
-                {membership.membershipStatus === 'EXPIRED' && (
-                  <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                    <div className="flex items-center">
-                      <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
-                      <span className="text-red-700 font-medium">Membership Expired</span>
-                    </div>
-                    <p className="text-red-600 text-sm mt-1">
-                      Your membership expired on {formatDate(membership.expiryDate)}. Please renew to continue borrowing books.
-                    </p>
-                  </div>
-                )}
-
-                {/* Days until expiry */}
-                {membership.membershipStatus === 'ACTIVE' && (
-                  <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-center">
-                      <Calendar className="h-5 w-5 text-blue-500 mr-2" />
-                      <span className="text-blue-700 font-medium">
-                        {(() => {
-                          const today = new Date();
-                          const expiry = new Date(membership.expiryDate);
-                          const diffTime = expiry.getTime() - today.getTime();
-                          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                          
-                          if (diffDays <= 0) return 'Membership has expired';
-                          if (diffDays <= 30) return `Membership expires in ${diffDays} days`;
-                          return `Membership valid for ${diffDays} more days`;
-                        })()}
-                      </span>
-                    </div>
-                  </div>
-                )}
               </div>
-            </>
+            </div>
           )}
         </div>
       </main>
 
       {/* Create Membership Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto border border-gray-100 relative" style={{ zIndex: 10000 }}>
-            <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4 rounded-t-2xl">
-              <h3 className="text-lg font-bold text-white">Create Membership</h3>
+        <div className="fixed inset-0 flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm animate-in fade-in duration-300" style={{ zIndex: 9999 }}>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md mx-auto border border-gray-100 relative transform transition-all animate-in zoom-in-95 duration-300">
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6 rounded-t-3xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="h-10 w-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-3">
+                    <Plus className="h-6 w-6 text-white" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white">Create Membership</h3>
+                </div>
+                <button 
+                  onClick={() => setShowCreateModal(false)}
+                  className="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-1.5 transition-colors"
+                >
+                  ×
+                </button>
+              </div>
             </div>
             
-            <div className="p-6">
+            <div className="p-8">
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Membership Type
+                <label className="block text-sm font-bold text-gray-900 mb-3">
+                  Select Membership Type
                 </label>
                 <select
                   value={selectedMembershipType}
                   onChange={(e) => setSelectedMembershipType(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white font-medium transition-all hover:border-gray-300"
                 >
                   <option value="STUDENT">Student (5 books limit)</option>
                   <option value="REGULAR">Regular (3 books limit)</option>
@@ -380,33 +469,50 @@ const MembershipPage: React.FC = () => {
                 </select>
               </div>
 
-              <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-                <h4 className="text-sm font-medium text-blue-900 mb-2">Membership Details</h4>
-                <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• Valid for 1 year from creation date</li>
-                  <li>• Full access to library resources</li>
-                  <li>• Borrowing limit: {selectedMembershipType === 'STUDENT' ? '5' : selectedMembershipType === 'PREMIUM' ? '10' : '3'} books</li>
+              <div className="mb-8 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                <h4 className="text-sm font-bold text-blue-900 mb-3 flex items-center">
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Membership Details
+                </h4>
+                <ul className="text-sm text-blue-800 space-y-2 font-medium">
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>Valid for 1 year from creation date</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>Full access to library resources</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>Borrowing limit: {selectedMembershipType === 'STUDENT' ? '5' : selectedMembershipType === 'PREMIUM' ? '10' : '3'} books</span>
+                  </li>
                 </ul>
               </div>
 
               <div className="flex justify-end space-x-3">
                 <button
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                  className="px-6 py-2.5 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200 hover:shadow-md"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={createMembership}
                   disabled={creating}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors flex items-center"
+                  className="px-6 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center"
                 >
                   {creating ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Creating...
+                    </>
                   ) : (
-                    <Plus className="w-4 h-4 mr-2" />
+                    <>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Membership
+                    </>
                   )}
-                  Create Membership
                 </button>
               </div>
             </div>

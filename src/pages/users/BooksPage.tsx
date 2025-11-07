@@ -381,7 +381,7 @@ const BooksPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
       {/* Header with Navigation Tabs */}
       <UserHeader 
         username={user?.username || 'User'} 
@@ -389,31 +389,30 @@ const BooksPage: React.FC = () => {
       />
 
       {/* Main Content */}
-      <main className="pt-20 pb-8">
+      <main className="pt-24 pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Page Header */}
-          {/* <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Browse Books</h1>
-            <p className="mt-2 text-gray-600">Discover and borrow books from our collection</p>
-          </div> */}
+          <div className="mb-8">
+            <p className="text-base text-gray-500 text-center">Discover and borrow books from our extensive collection</p>
+          </div>
 
-          {/* Search and Filter Bar */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8 text-gray-900">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          {/* Premium Search and Filter Bar */}
+          <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6 mb-8">
+            <div className="flex flex-col lg:flex-row lg:items-center gap-4">
               {/* Search Form */}
-              <form onSubmit={handleSearch} className="flex-1 max-w-2xl">
+              <form onSubmit={handleSearch} className="flex-1">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="block w-full pl-10 pr-20 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="block w-full pl-12 pr-28 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900 font-medium"
                     placeholder="Search by title, author, or ISBN..."
                   />
                   <button
                     type="submit"
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-5 py-2 rounded-lg text-sm font-bold transition-all duration-200 shadow-md hover:shadow-lg"
                   >
                     Search
                   </button>
@@ -421,16 +420,16 @@ const BooksPage: React.FC = () => {
               </form>
 
               {/* Sort Dropdown */}
-              <div className="flex items-center space-x-2">
-                <Filter className="h-5 w-5 text-gray-400" />
+              <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 rounded-xl border-2 border-slate-200">
+                <Filter className="h-5 w-5 text-slate-600" />
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="bg-transparent border-none text-sm font-semibold text-gray-900 focus:ring-0 focus:outline-none cursor-pointer"
                 >
-                  <option value="createdAt">Sort by Date</option>
-                  <option value="title">Sort by Title</option>
-                  <option value="author">Sort by Author</option>
+                  <option value="createdAt">Newest First</option>
+                  <option value="title">Title A-Z</option>
+                  <option value="author">Author A-Z</option>
                 </select>
               </div>
             </div>
@@ -438,21 +437,33 @@ const BooksPage: React.FC = () => {
 
           {/* Results Info */}
           {pageInfo && (
-            <div className="mb-6">
-              <p className="text-sm text-gray-600">
-                Showing {pageInfo.size * (pageInfo.number - 1) + 1} - {Math.min(pageInfo.size * pageInfo.number, pageInfo.totalElements)} of {pageInfo.totalElements} books
+            <div className="mb-6 flex items-center justify-between">
+              <p className="text-sm font-semibold text-gray-600">
+                Showing <span className="text-blue-600">{pageInfo.size * (pageInfo.number - 1) + 1} - {Math.min(pageInfo.size * pageInfo.number, pageInfo.totalElements)}</span> of <span className="text-blue-600">{pageInfo.totalElements}</span> books
               </p>
+              {searchQuery && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setCurrentPage(1);
+                    fetchBooks(1, '', sortBy);
+                  }}
+                  className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                >
+                  Clear search
+                </button>
+              )}
             </div>
           )}
 
-          {/* Error Message - Keep for critical errors */}
+          {/* Error Message */}
           {error && (
-            <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-center">
-              <AlertCircle className="h-5 w-5 text-red-500 mr-3" />
-              <span className="text-red-700">{error}</span>
+            <div className="mb-6 bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-center shadow-sm">
+              <AlertCircle className="h-5 w-5 text-red-500 mr-3 flex-shrink-0" />
+              <span className="text-red-700 font-medium flex-1">{error}</span>
               <button 
                 onClick={() => setError(null)}
-                className="ml-auto text-red-500 hover:text-red-700"
+                className="text-red-500 hover:text-red-700 font-bold text-xl"
               >
                 ×
               </button>
@@ -461,62 +472,85 @@ const BooksPage: React.FC = () => {
 
           {/* Loading State */}
           {loading && (
-            <div className="flex justify-center items-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-              <span className="ml-2 text-gray-600">Loading books...</span>
+            <div className="flex justify-center items-center py-20">
+              <div className="text-center">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-blue-500 rounded-full blur-xl opacity-30 animate-pulse"></div>
+                  <Loader2 className="relative h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+                </div>
+                <span className="text-gray-700 font-semibold">Loading books...</span>
+              </div>
             </div>
           )}
 
-          {/* Books Grid */}
+          {/* Premium Books Grid */}
           {!loading && books.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-10">
               {books.map((book) => {
                 const coverUrl = getCoverImageUrl(book);
                 
                 return (
-                  <div key={book.id} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow border border-gray-200">
-                    <div className="h-64 bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center rounded-t-lg overflow-hidden">
+                  <div key={book.id} className="group bg-white rounded-2xl shadow-lg border border-slate-200/60 overflow-hidden hover:shadow-2xl transition-all duration-500">
+                    {/* Book Cover */}
+                    <div className="relative h-64 bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600 flex items-center justify-center overflow-hidden">
+                      {/* Availability Badge */}
+                      <div className="absolute top-3 right-3 z-10">
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black shadow-lg ${
+                          book.isAvailable && (book.availableCopies === null || book.availableCopies > 0)
+                            ? 'bg-green-500 text-white'
+                            : 'bg-red-500 text-white'
+                        }`}>
+                          <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>
+                          {book.isAvailable && (book.availableCopies === null || book.availableCopies > 0) ? 'Available' : 'Unavailable'}
+                        </span>
+                      </div>
+
+                      {/* Hover Overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
                       {coverUrl ? (
                         <img
                           src={coverUrl}
                           alt={`Cover of ${book.title}`}
-                          className="w-full h-full object-contain bg-white"
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                           onError={(e) => {
-                            // Fallback to icon if image fails to load
                             const target = e.target as HTMLImageElement;
                             target.style.display = 'none';
                             const parent = target.parentElement;
                             if (parent && !parent.querySelector('.fallback-icon')) {
                               const iconDiv = document.createElement('div');
                               iconDiv.className = 'flex items-center justify-center w-full h-full fallback-icon';
-                              iconDiv.innerHTML = '<svg class="h-16 w-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253z"></path></svg>';
+                              iconDiv.innerHTML = '<svg class="h-20 w-20 text-white drop-shadow-2xl" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253z"></path></svg>';
                               parent.appendChild(iconDiv);
                             }
                           }}
                         />
                       ) : (
-                        <Book className="h-16 w-16 text-white" />
+                        <Book className="h-20 w-20 text-white group-hover:scale-125 transition-transform duration-500 drop-shadow-2xl" />
                       )}
                     </div>
+                    
+                    {/* Book Details */}
                     <div className="p-5">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1 line-clamp-2">{book.title}</h3>
-                      <p className="text-sm text-gray-600 mb-2">by {book.author}</p>
-                      <p className="text-xs text-gray-500 mb-3">{book.publisher}</p>
+                      <h3 className="text-lg font-black text-gray-900 mb-1 line-clamp-2 group-hover:text-blue-600 transition-colors">{book.title}</h3>
+                      <p className="text-sm text-gray-500 mb-1 font-medium">by {book.author}</p>
+                      <p className="text-xs text-gray-400 mb-4">{book.publisher}</p>
                       
-                      <div className="space-y-2 mb-4">
-                        <div className="flex justify-between text-xs text-gray-500">
-                          <span>Genre:</span>
-                          <span className="font-medium">{book.genre}</span>
+                      {/* Book Info */}
+                      <div className="space-y-2 mb-4 pb-4 border-b border-gray-100">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-gray-500">Genre</span>
+                          <span className="text-xs font-bold text-gray-900 bg-slate-100 px-2.5 py-1 rounded-lg">{book.genre}</span>
                         </div>
-                        <div className="flex justify-between text-xs text-gray-500">
-                          <span>ISBN:</span>
-                          <span className="font-medium">{book.isbn}</span>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-gray-500">ISBN</span>
+                          <span className="text-xs font-mono font-bold text-gray-700">{book.isbn}</span>
                         </div>
                         {book.totalCopies !== null && (
-                          <div className="flex justify-between text-xs text-gray-500">
-                            <span>Available:</span>
-                            <span className={`font-medium ${book.availableCopies! > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              {book.availableCopies}/{book.totalCopies} copies
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-gray-500">Copies</span>
+                            <span className={`text-xs font-black ${book.availableCopies! > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {book.availableCopies}/{book.totalCopies}
                             </span>
                           </div>
                         )}
@@ -524,21 +558,19 @@ const BooksPage: React.FC = () => {
                       
                       {/* Action Buttons */}
                       <div className="space-y-2">
-                        {/* Primary Action Button */}
                         <button
                           onClick={() => handleBorrowClick(book.id)}
                           disabled={!book.isAvailable || (book.availableCopies !== null && book.availableCopies === 0)}
-                          className="w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-orange-500 hover:bg-orange-600 text-white"
+                          className="w-full py-3 px-4 rounded-xl text-sm font-black transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 active:scale-95"
                         >
                           {book.isAvailable && (book.availableCopies === null || book.availableCopies > 0) ? 'Borrow Book' : 'Not Available'}
                         </button>
                         
-                        {/* Reserve Button - Show when book is not available */}
                         {(!book.isAvailable || (book.availableCopies !== null && book.availableCopies === 0)) && membership && (
                           <button
                             onClick={() => reserveBook(book.id)}
                             disabled={reservingBookId === book.id}
-                            className="w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                            className="w-full py-3 px-4 rounded-xl text-sm font-black transition-all duration-300 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center active:scale-95"
                           >
                             {reservingBookId === book.id ? (
                               <>
@@ -551,9 +583,8 @@ const BooksPage: React.FC = () => {
                           </button>
                         )}
                         
-                        {/* No Membership Message */}
                         {(!book.isAvailable || (book.availableCopies !== null && book.availableCopies === 0)) && !membership && (
-                          <p className="text-xs text-gray-500 text-center">
+                          <p className="text-xs text-gray-500 text-center font-medium bg-gray-50 py-2 rounded-lg">
                             Membership required to reserve
                           </p>
                         )}
@@ -567,71 +598,71 @@ const BooksPage: React.FC = () => {
 
           {/* No Results */}
           {!loading && books.length === 0 && !error && (
-            <div className="text-center py-12">
-              <Book className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No books found</h3>
-              <p className="mt-1 text-sm text-gray-500">Try adjusting your search criteria</p>
+            <div className="text-center py-20">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl mb-4">
+                <Book className="h-10 w-10 text-gray-400" />
+              </div>
+              <h3 className="text-xl font-black text-gray-900 mb-2">No books found</h3>
+              <p className="text-base text-gray-500 mb-6">Try adjusting your search criteria or filters</p>
+              {searchQuery && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setCurrentPage(1);
+                    fetchBooks(1, '', sortBy);
+                  }}
+                  className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl"
+                >
+                  Clear Search
+                </button>
+              )}
             </div>
           )}
 
-          {/* Numerical Pagination */}
+          {/* Premium Pagination */}
           {pageInfo && pageInfo.totalPages > 1 && (
-            <div className="flex items-center justify-center bg-white px-4 py-3 border border-gray-200 rounded-lg">
-              <nav className="flex items-center space-x-1" aria-label="Pagination">
-                {/* Previous Button */}
+            <div className="flex items-center justify-center bg-white px-6 py-4 border-2 border-slate-200 rounded-2xl shadow-lg">
+              <nav className="flex items-center gap-1" aria-label="Pagination">
                 <button
-                  onClick={() => {
-                    const newPage = Math.max(1, currentPage - 1);
-                    setCurrentPage(newPage);
-                  }}
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                   disabled={currentPage <= 1}
-                  className="relative inline-flex items-center px-2 py-2 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="relative inline-flex items-center px-3 py-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl transition-all duration-200 font-bold"
                 >
                   <ChevronLeft className="h-5 w-5" />
-                  <span className="sr-only">Previous</span>
                 </button>
 
-                {/* First Page */}
                 {currentPage > 3 && (
                   <>
                     <button
                       onClick={() => setCurrentPage(1)}
-                      className="relative inline-flex items-center px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-md"
+                      className="relative inline-flex items-center px-4 py-2 text-sm font-bold text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200"
                     >
                       1
                     </button>
                     {currentPage > 4 && (
-                      <span className="relative inline-flex items-center px-3 py-2 text-sm font-medium text-gray-500">
-                        ...
-                      </span>
+                      <span className="px-2 text-gray-400 font-bold">...</span>
                     )}
                   </>
                 )}
 
-                {/* Page Numbers */}
                 {(() => {
                   const pages = [];
                   const totalPages = pageInfo.totalPages;
                   let startPage = Math.max(1, currentPage - 2);
                   let endPage = Math.min(totalPages, currentPage + 2);
 
-                  // Adjust range if we're near the beginning or end
-                  if (currentPage <= 3) {
-                    endPage = Math.min(5, totalPages);
-                  }
-                  if (currentPage >= totalPages - 2) {
-                    startPage = Math.max(1, totalPages - 4);
-                  }
+                  if (currentPage <= 3) endPage = Math.min(5, totalPages);
+                  if (currentPage >= totalPages - 2) startPage = Math.max(1, totalPages - 4);
 
                   for (let i = startPage; i <= endPage; i++) {
                     pages.push(
                       <button
                         key={i}
                         onClick={() => setCurrentPage(i)}
-                        className={`relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-md ${
+                        className={`relative inline-flex items-center px-4 py-2 text-sm font-bold rounded-xl transition-all duration-200 ${
                           i === currentPage
-                            ? 'bg-blue-600 text-white shadow-sm'
-                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30'
+                            : 'text-gray-700 hover:text-blue-600 hover:bg-blue-50'
                         }`}
                       >
                         {i}
@@ -641,34 +672,26 @@ const BooksPage: React.FC = () => {
                   return pages;
                 })()}
 
-                {/* Last Page */}
                 {currentPage < pageInfo.totalPages - 2 && (
                   <>
                     {currentPage < pageInfo.totalPages - 3 && (
-                      <span className="relative inline-flex items-center px-3 py-2 text-sm font-medium text-gray-500">
-                        ...
-                      </span>
+                      <span className="px-2 text-gray-400 font-bold">...</span>
                     )}
                     <button
                       onClick={() => setCurrentPage(pageInfo.totalPages)}
-                      className="relative inline-flex items-center px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-md"
+                      className="relative inline-flex items-center px-4 py-2 text-sm font-bold text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200"
                     >
                       {pageInfo.totalPages}
                     </button>
                   </>
                 )}
 
-                {/* Next Button */}
                 <button
-                  onClick={() => {
-                    const newPage = Math.min(pageInfo.totalPages, currentPage + 1);
-                    setCurrentPage(newPage);
-                  }}
+                  onClick={() => setCurrentPage(Math.min(pageInfo.totalPages, currentPage + 1))}
                   disabled={currentPage >= pageInfo.totalPages}
-                  className="relative inline-flex items-center px-2 py-2 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="relative inline-flex items-center px-3 py-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl transition-all duration-200 font-bold"
                 >
                   <ChevronRight className="h-5 w-5" />
-                  <span className="sr-only">Next</span>
                 </button>
               </nav>
             </div>
@@ -676,33 +699,39 @@ const BooksPage: React.FC = () => {
         </div>
       </main>
 
-      {/* Borrow Modal */}
+      {/* Premium Borrow Modal */}
       {showBorrowModal && (
-        <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto border border-gray-100 relative" style={{ zIndex: 10000, overflow: 'visible' }}>
-            {/* Modal Header */}
-            <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 rounded-t-2xl">
-              <div className="flex items-center">
-                <Book className="h-6 w-6 text-white mr-3" />
-                <h3 className="text-xl font-bold text-white">Borrow Book</h3>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md mx-auto border border-slate-200 relative overflow-hidden">
+            {/* Modal Header with Gradient */}
+            <div className="bg-gradient-to-r from-orange-500 via-orange-600 to-red-600 px-8 py-6 relative">
+              <div className="absolute inset-0 opacity-10">
+                <div className="absolute top-0 left-0 w-40 h-40 bg-white rounded-full -translate-x-1/2 -translate-y-1/2"></div>
+                <div className="absolute bottom-0 right-0 w-40 h-40 bg-white rounded-full translate-x-1/2 translate-y-1/2"></div>
+              </div>
+              <div className="relative flex items-center">
+                <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl mr-3">
+                  <Book className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="text-2xl font-black text-white">Borrow Book</h3>
               </div>
             </div>
             
             {/* Modal Content */}
-            <div className="p-6" style={{ overflow: 'visible' }}>
-              <div className="mb-6">
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  Please select when you plan to return this book. Remember to return it on time to avoid late fees.
+            <div className="p-8">
+              <div className="mb-6 p-4 bg-blue-50 border-2 border-blue-200 rounded-xl">
+                <p className="text-sm text-blue-800 leading-relaxed font-medium">
+                  Please select your planned return date. Remember to return on time to avoid late fees and help other members access our collection.
                 </p>
               </div>
               
-              <div className="mb-6" style={{ overflow: 'visible' }}>
-                <label className="flex items-center text-sm font-semibold text-gray-800 mb-3">
-                  <Calendar className="h-4 w-4 mr-2 text-orange-500" />
+              <div className="mb-6">
+                <label className="flex items-center text-sm font-black text-gray-900 mb-3">
+                  <Calendar className="h-5 w-5 mr-2 text-orange-500" />
                   Return Date <span className="text-red-500 ml-1">*</span>
                 </label>
                 
-                <div className="relative" style={{ zIndex: 10003, overflow: 'visible' }}>
+                <div className="relative">
                   <DatePicker
                     selected={selectedReturnDate}
                     onChange={(date: Date | null) => setSelectedReturnDate(date)}
@@ -710,43 +739,36 @@ const BooksPage: React.FC = () => {
                     maxDate={new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)}
                     dateFormat="EEEE, MMMM dd, yyyy"
                     placeholderText="Click to select return date"
-                    className="w-full px-4 py-3 text-gray-900 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 font-medium text-center"
+                    className="w-full px-5 py-4 text-gray-900 bg-slate-50 border-2 border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 font-bold text-center hover:border-orange-300"
                     wrapperClassName="w-full"
                     todayButton="Select Today"
                     showPopperArrow={false}
-                    popperClassName="!z-[10004] !important"
+                    popperClassName="!z-[10004]"
                     popperPlacement="bottom"
                     fixedHeight
-                    onCalendarOpen={() => {
-                      // Ensure calendar is above everything
-                      const calendar = document.querySelector('.react-datepicker');
-                      if (calendar) {
-                        (calendar as HTMLElement).style.zIndex = '10005';
-                      }
-                    }}
                   />
                 </div>
                 
-                <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <p className="text-xs text-amber-700 flex items-center">
-                    <AlertCircle className="h-3 w-3 mr-1" />
+                <div className="mt-4 p-3 bg-amber-50 border-2 border-amber-200 rounded-xl">
+                  <p className="text-xs text-amber-800 flex items-center font-semibold">
+                    <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
                     Maximum borrowing period is 90 days from today
                   </p>
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-100">
+              <div className="flex gap-3 pt-6 border-t-2 border-gray-100">
                 <button
                   onClick={handleBorrowCancel}
-                  className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300"
+                  className="flex-1 px-6 py-3.5 text-sm font-black text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleBorrowConfirm}
                   disabled={!selectedReturnDate}
-                  className="px-5 py-2.5 text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-300 shadow-lg hover:shadow-xl disabled:shadow-none"
+                  className="flex-1 px-6 py-3.5 text-sm font-black text-white bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-300 shadow-xl hover:shadow-2xl disabled:shadow-none active:scale-95"
                 >
                   Confirm Borrow
                 </button>

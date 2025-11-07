@@ -298,7 +298,7 @@ const ReservationPage: React.FC = () => {
   }, [membership]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
       {/* Header with Navigation Tabs */}
       <UserHeader 
         username={user?.username || 'User'} 
@@ -306,82 +306,103 @@ const ReservationPage: React.FC = () => {
       />
 
       {/* Main Content */}
-      <main className="pt-20 pb-8">
+      <main className="pt-24 pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Page Title */}
+          <div className="mb-8">
+            <p className="text-gray-600 text-center">Reserve books and manage your waiting list</p>
+          </div>
+
           {/* Error Message */}
           {error && (
-            <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-center">
-              <AlertCircle className="h-5 w-5 text-red-500 mr-3" />
-              <span className="text-red-700">{error}</span>
+            <div className="mb-6 bg-red-50 border-l-4 border-red-500 rounded-r-xl p-4 flex items-center shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="flex-shrink-0">
+                <AlertCircle className="h-5 w-5 text-red-500" />
+              </div>
+              <span className="ml-3 text-red-700 flex-1">{error}</span>
               <button 
                 onClick={() => setError(null)}
-                className="ml-auto text-red-500 hover:text-red-700"
+                className="ml-4 text-red-400 hover:text-red-600 transition-colors"
               >
-                ×
+                <X className="h-5 w-5" />
               </button>
             </div>
           )}
 
           {/* Loading State */}
           {loading && (
-            <div className="flex justify-center items-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-              <span className="ml-2 text-gray-600">Loading reservations...</span>
+            <div className="flex flex-col justify-center items-center py-20">
+              <div className="relative">
+                <div className="absolute inset-0 bg-blue-400 rounded-full blur-xl opacity-20 animate-pulse"></div>
+                <Loader2 className="h-12 w-12 animate-spin text-blue-600 relative" />
+              </div>
+              <span className="mt-4 text-gray-600 font-medium">Loading reservations...</span>
             </div>
           )}
 
           {/* No Membership */}
           {!loading && !membership && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
-              <AlertCircle className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No Membership Found</h3>
-              <p className="text-gray-600">You need an active membership to make reservations.</p>
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-12 text-center">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full mb-6">
+                <AlertCircle className="h-10 w-10 text-gray-400" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">No Membership Found</h3>
+              <p className="text-gray-600 max-w-md mx-auto">You need an active membership to make reservations. Please contact the library to get started.</p>
             </div>
           )}
 
           {/* Main Content */}
           {!loading && membership && (
-            <>
+            <div className="space-y-8">
               {/* Current Reservations */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-xl font-semibold text-gray-900">Current Reservations</h2>
+              <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                <div className="bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-5">
+                  <h2 className="text-2xl font-bold text-white flex items-center">
+                    <BookOpen className="h-6 w-6 mr-3" />
+                    Current Reservations
+                  </h2>
+                  <p className="text-blue-100 text-sm mt-1">Track your reserved books and their status</p>
                 </div>
                 
                 <div className="overflow-x-auto">
                   {reservations.length > 0 ? (
                     <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
+                      <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                             Book Title
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                             Reserved Date
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                             Status
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                             Expiry Date
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
+                      <tbody className="bg-white divide-y divide-gray-100">
                         {reservations.map(reservation => (
-                          <tr key={reservation.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                              {reservation.bookTitle}
+                          <tr key={reservation.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200">
+                            <td className="px-6 py-5 text-sm font-semibold text-gray-900">
+                              <div className="flex items-center">
+                                <div className="h-10 w-10 flex-shrink-0 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-lg flex items-center justify-center mr-3">
+                                  <BookOpen className="h-5 w-5 text-blue-600" />
+                                </div>
+                                {reservation.bookTitle}
+                              </div>
                             </td>
-                            <td className="px-6 py-4 text-sm text-gray-900">
+                            <td className="px-6 py-5 text-sm text-gray-700">
                               {formatDate(reservation.reservationDate)}
                             </td>
-                            <td className="px-6 py-4">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(reservation.status)}`}>
+                            <td className="px-6 py-5">
+                              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(reservation.status)} shadow-sm`}>
                                 {reservation.status}
                               </span>
                             </td>
-                            <td className="px-6 py-4 text-sm text-gray-900">
+                            <td className="px-6 py-5 text-sm text-gray-700 font-medium">
                               {reservation.expiryDate ? formatDate(reservation.expiryDate) : '-'}
                             </td>
                           </tr>
@@ -389,105 +410,151 @@ const ReservationPage: React.FC = () => {
                       </tbody>
                     </table>
                   ) : (
-                    <div className="text-center py-12">
-                      <BookOpen className="mx-auto h-12 w-12 text-gray-400" />
-                      <h3 className="mt-2 text-sm font-medium text-gray-900">No reservations</h3>
-                      <p className="mt-1 text-sm text-gray-500">You haven't made any book reservations yet.</p>
+                    <div className="text-center py-16 px-6">
+                      <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full mb-4">
+                        <BookOpen className="h-10 w-10 text-blue-600" />
+                      </div>
+                      <h3 className="text-lg font-bold text-gray-900 mb-2">No reservations yet</h3>
+                      <p className="text-gray-600 max-w-sm mx-auto">Start reserving unavailable books to get notified when they become available.</p>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Available Books for Reservation */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-xl font-semibold text-gray-900">Reserve Books</h2>
-                  <p className="text-sm text-gray-600 mt-1">Books currently unavailable for immediate borrowing</p>
+              <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-5">
+                  <h2 className="text-2xl font-bold text-white flex items-center">
+                    <Plus className="h-6 w-6 mr-3" />
+                    Reserve Books
+                  </h2>
+                  <p className="text-indigo-100 text-sm mt-1">Books currently unavailable for immediate borrowing</p>
                 </div>
                 
-                <div className="p-6">
+                <div className="p-8">
                   {loadingBooks ? (
-                    <div className="flex justify-center items-center py-8">
-                      <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-                      <span className="ml-2 text-gray-600">Loading books...</span>
+                    <div className="flex flex-col justify-center items-center py-12">
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-purple-400 rounded-full blur-xl opacity-20 animate-pulse"></div>
+                        <Loader2 className="h-10 w-10 animate-spin text-purple-600 relative" />
+                      </div>
+                      <span className="mt-4 text-gray-600 font-medium">Loading books...</span>
                     </div>
                   ) : availableBooks.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {availableBooks.map(book => (
-                        <div key={book.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                          <h4 className="font-medium text-gray-900 mb-1">{book.title}</h4>
-                          <p className="text-sm text-gray-600 mb-2">by {book.author}</p>
-                          <p className="text-xs text-gray-500 mb-3">{book.genre}</p>
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs text-red-600">Not Available</span>
-                            <button
-                              onClick={() => handleReserveBook(book)}
-                              className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
-                            >
-                              Reserve
-                            </button>
+                        <div key={book.id} className="group relative bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-xl p-6 hover:shadow-xl hover:border-indigo-300 transition-all duration-300 hover:-translate-y-1">
+                          <div className="absolute top-4 right-4">
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 shadow-sm">
+                              Not Available
+                            </span>
                           </div>
+                          
+                          <div className="mb-4">
+                            <div className="h-12 w-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center mb-4 shadow-md">
+                              <BookOpen className="h-6 w-6 text-white" />
+                            </div>
+                            <h4 className="font-bold text-gray-900 mb-2 line-clamp-2 text-lg leading-tight">{book.title}</h4>
+                            <p className="text-sm text-gray-600 mb-1 font-medium">by {book.author}</p>
+                            <p className="text-xs text-gray-500 mb-4">{book.publisher}</p>
+                            <div className="flex items-center text-xs text-gray-500">
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-100 font-medium">
+                                {book.genre}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          <button
+                            onClick={() => handleReserveBook(book)}
+                            className="w-full px-4 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center group-hover:scale-105"
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Reserve Book
+                          </button>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-8">
-                      <CheckCircle className="mx-auto h-12 w-12 text-green-400" />
-                      <h3 className="mt-2 text-sm font-medium text-gray-900">All books available</h3>
-                      <p className="mt-1 text-sm text-gray-500">All books are currently available for borrowing.</p>
+                    <div className="text-center py-16 px-6">
+                      <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full mb-4">
+                        <CheckCircle className="h-10 w-10 text-green-600" />
+                      </div>
+                      <h3 className="text-lg font-bold text-gray-900 mb-2">All books available</h3>
+                      <p className="text-gray-600 max-w-sm mx-auto">Great news! All books are currently available for borrowing. Check the borrowing page to get started.</p>
                     </div>
                   )}
                 </div>
               </div>
-            </>
+            </div>
           )}
         </div>
       </main>
 
       {/* Reserve Confirmation Modal */}
       {showReserveModal && selectedBook && (
-        <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto border border-gray-100 relative">
-            <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4 rounded-t-2xl">
+        <div className="fixed inset-0 flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm animate-in fade-in duration-300" style={{ zIndex: 9999 }}>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg mx-auto border border-gray-100 relative transform transition-all animate-in zoom-in-95 duration-300">
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-6 rounded-t-3xl">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-white">Reserve Book</h3>
-                <button onClick={cancelReservation} className="text-white hover:text-gray-200">
+                <div className="flex items-center">
+                  <div className="h-10 w-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-3">
+                    <BookOpen className="h-6 w-6 text-white" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white">Reserve Book</h3>
+                </div>
+                <button 
+                  onClick={cancelReservation} 
+                  className="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-1.5 transition-colors"
+                >
                   <X className="h-5 w-5" />
                 </button>
               </div>
             </div>
             
-            <div className="p-6">
+            <div className="p-8">
               <div className="mb-6">
-                <h4 className="font-medium text-gray-900 mb-2">{selectedBook.title}</h4>
-                <p className="text-sm text-gray-600">by {selectedBook.author}</p>
-                <p className="text-xs text-gray-500 mt-1">{selectedBook.publisher}</p>
+                <h4 className="font-bold text-gray-900 mb-2 text-xl">{selectedBook.title}</h4>
+                <p className="text-sm text-gray-700 font-medium mb-1">by {selectedBook.author}</p>
+                <p className="text-xs text-gray-500">{selectedBook.publisher}</p>
+                <div className="mt-3">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700">
+                    {selectedBook.genre}
+                  </span>
+                </div>
               </div>
               
-              <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  This book is currently unavailable. By reserving it, you'll be notified when it becomes available for borrowing.
-                </p>
+              <div className="mb-8 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                <div className="flex items-start">
+                  <AlertCircle className="h-5 w-5 text-blue-600 mr-3 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-blue-900 leading-relaxed">
+                    This book is currently unavailable. By reserving it, you'll be notified when it becomes available for borrowing.
+                  </p>
+                </div>
               </div>
 
               <div className="flex justify-end space-x-3">
                 <button
                   onClick={cancelReservation}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                  className="px-6 py-2.5 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200 hover:shadow-md"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={confirmReservation}
                   disabled={reserving}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors flex items-center"
+                  className="px-6 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center"
                 >
                   {reserving ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Reserving...
+                    </>
                   ) : (
-                    <Plus className="w-4 h-4 mr-2" />
+                    <>
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Confirm Reservation
+                    </>
                   )}
-                  Confirm Reservation
                 </button>
               </div>
             </div>
