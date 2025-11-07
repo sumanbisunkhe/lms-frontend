@@ -561,7 +561,7 @@ const BooksPage: React.FC = () => {
                         <button
                           onClick={() => handleBorrowClick(book.id)}
                           disabled={!book.isAvailable || (book.availableCopies !== null && book.availableCopies === 0)}
-                          className="w-full py-3 px-4 rounded-xl text-sm font-black transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 active:scale-95"
+                          className="w-full py-3 px-4 rounded-xl text-sm font-black transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-violet-500 to-blue-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 active:scale-95"
                         >
                           {book.isAvailable && (book.availableCopies === null || book.availableCopies > 0) ? 'Borrow Book' : 'Not Available'}
                         </button>
