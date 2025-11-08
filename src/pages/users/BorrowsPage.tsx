@@ -1061,96 +1061,98 @@ const BorrowsPage: React.FC = () => {
 
       {/* Pay Fine Confirmation Modal */}
       {showPayFineModal && selectedFinePayment && (
-        <div className="fixed inset-0 flex items-center justify-center p-4 animate-in fade-in duration-300" style={{ zIndex: 9999 }}>
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md mx-auto border border-gray-100 relative transform transition-all animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 flex items-center justify-center p-3 sm:p-6 md:p-8 animate-in fade-in duration-300" style={{ zIndex: 9999 }}>
+          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-lg mx-auto border border-gray-100 relative max-h-[90vh] flex flex-col transform transition-all animate-in zoom-in-95 duration-300">
             {/* Modal Header */}
-            <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-8 py-6 rounded-t-3xl">
+            <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-3 sm:px-6 md:px-8 py-3 sm:py-4 md:py-5 rounded-t-2xl sm:rounded-t-3xl flex-shrink-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <div className="h-10 w-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-3">
-                    <HandCoins className="h-6 w-6 text-green-600" />
+                  <div className="h-7 w-7 sm:h-9 sm:w-9 bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-2 sm:mr-3">
+                    <HandCoins className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
                   </div>
-                  <h3 className="text-xl font-bold text-white">Pay Fine</h3>
+                  <h3 className="text-base sm:text-lg md:text-xl font-bold text-white">Pay Fine</h3>
                 </div>
                 <button
                   onClick={cancelPayFine}
-                  className="text-white  hover:bg-gray-400 rounded-lg p-1.5 transition-colors"
+                  className="text-white hover:bg-gray-400 rounded-lg p-1 sm:p-1.5 transition-colors"
                 >
-                  <XCircle className="h-5 w-5" />
+                  <XCircle className="h-4 w-4 sm:h-5 sm:w-5" />
                 </button>
               </div>
             </div>
             
-            {/* Modal Content */}
-            <div className="p-8">
+            {/* Modal Content - Scrollable */}
+            <div className="p-3 sm:p-5 md:p-6 overflow-y-auto flex-1">
               {/* Book Info */}
-              <div className="mb-6 bg-gradient-to-br from-yellow-50 to-amber-50 rounded-xl p-5 border border-yellow-200">
+              <div className="mb-3 sm:mb-4 bg-gradient-to-br from-yellow-50 to-amber-50 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-yellow-200">
                 <div className="flex items-start">
-                  <div className="h-12 w-12 flex-shrink-0 bg-gradient-to-br from-yellow-500 to-amber-600 rounded-lg flex items-center justify-center mr-4">
-                    <Book className="h-6 w-6 text-white" />
+                  <div className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0 bg-gradient-to-br from-yellow-500 to-amber-600 rounded-lg flex items-center justify-center mr-2 sm:mr-3">
+                    <Book className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                   </div>
-                  <div className="flex-1">
-                    <h4 className="font-bold text-gray-900 mb-1 text-lg">{selectedFinePayment.bookTitle}</h4>
-                    <p className="text-sm text-gray-700 font-medium">Overdue fine payment</p>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-bold text-gray-900 mb-0.5 text-sm sm:text-base break-words line-clamp-2">{selectedFinePayment.bookTitle}</h4>
+                    <p className="text-xs sm:text-sm text-gray-700 font-medium">Overdue fine payment</p>
                   </div>
                 </div>
               </div>
 
               {/* Fine Amount */}
-              <div className="mb-6 bg-gradient-to-br from-red-50 to-rose-50 rounded-xl p-6 border border-red-200">
+              <div className="mb-3 sm:mb-4 bg-gradient-to-br from-red-50 to-rose-50 rounded-lg sm:rounded-xl p-3 sm:p-5 border border-red-200">
                 <div className="text-center">
-                  <p className="text-sm text-red-700 font-medium mb-2">Amount Due</p>
-                  <div className="text-4xl font-bold text-red-600">
+                  <p className="text-xs sm:text-sm text-red-700 font-medium mb-1">Amount Due</p>
+                  <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-red-600">
                     ${selectedFinePayment.fineAmount.toFixed(2)}
                   </div>
                 </div>
               </div>
 
               {/* Payment Info */}
-              <div className="mb-8 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
-                <h4 className="text-sm font-bold text-blue-900 mb-3 flex items-center">
-                  <AlertCircle className="h-4 w-4 mr-2" />
-                  Payment Information
+              <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg sm:rounded-xl border border-blue-200">
+                <h4 className="text-xs sm:text-sm font-bold text-blue-900 mb-2 flex items-center">
+                  <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 flex-shrink-0" />
+                  <span>Payment Information</span>
                 </h4>
-                <ul className="text-sm text-blue-800 space-y-2 font-medium">
+                <ul className="text-xs sm:text-sm text-blue-800 space-y-1.5 sm:space-y-2 font-medium">
                   <li className="flex items-start">
-                    <span className="mr-2">•</span>
-                    <span>You will be redirected to Khalti payment gateway</span>
+                    <span className="mr-1.5 sm:mr-2 flex-shrink-0">•</span>
+                    <span className="leading-tight">You will be redirected to Khalti payment gateway</span>
                   </li>
                   <li className="flex items-start">
-                    <span className="mr-2">•</span>
-                    <span>Payment is secure and encrypted</span>
+                    <span className="mr-1.5 sm:mr-2 flex-shrink-0">•</span>
+                    <span className="leading-tight">Payment is secure and encrypted</span>
                   </li>
                   <li className="flex items-start">
-                    <span className="mr-2">•</span>
-                    <span>Your fine will be cleared after successful payment</span>
+                    <span className="mr-1.5 sm:mr-2 flex-shrink-0">•</span>
+                    <span className="leading-tight">Your fine will be cleared after successful payment</span>
                   </li>
                 </ul>
               </div>
+            </div>
 
-              {/* Action Buttons */}
-              <div className="flex justify-end space-x-3">
+            {/* Action Buttons - Fixed at bottom */}
+            <div className="flex-shrink-0 p-3 sm:p-5 md:p-6 pt-0 border-t border-gray-100">
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3">
                 <button
                   onClick={cancelPayFine}
                   disabled={payingBorrowId === selectedFinePayment.borrowId}
-                  className="px-6 py-2.5 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200 hover:shadow-md disabled:opacity-50"
+                  className="w-full sm:w-auto px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200 hover:shadow-md disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={confirmPayFine}
                   disabled={payingBorrowId === selectedFinePayment.borrowId}
-                  className="px-6 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center"
+                  className="w-full sm:w-auto px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center"
                 >
                   {payingBorrowId === selectedFinePayment.borrowId ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      Processing...
+                      <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin mr-1.5 sm:mr-2" />
+                      <span>Processing...</span>
                     </>
                   ) : (
                     <>
-                      <HandCoins className="w-4 h-4 mr-2" />
-                      Proceed to Payment
+                      <HandCoins className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+                      <span>Proceed to Payment</span>
                     </>
                   )}
                 </button>
