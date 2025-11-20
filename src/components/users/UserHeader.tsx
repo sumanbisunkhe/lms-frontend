@@ -53,14 +53,11 @@ const UserHeader: React.FC<UserHeaderProps> = ({ username, onLogout }) => {
                 <div className="flex items-center justify-between h-20">
                     {/* Logo Section */}
                     <Link to="/user/dashboard" className="flex items-center space-x-3 hover:opacity-90 transition-opacity duration-300 flex-shrink-0">
-                        <div className="flex items-center justify-center w-11 h-11 bg-gradient-to-br from-blue-600 via-blue-600 to-indigo-700 rounded-2xl shadow-lg shadow-blue-500/20">
-                            <Library className="h-5 w-5 text-white" />
-                        </div>
-                        <div className="hidden sm:block">
-                            <p className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 tracking-tight">
-                                BookHive
-                            </p>
-                        </div>
+                        <img
+                            src="/logo.png"
+                            alt="Library Logo"
+                            className="h-14 w-14 object-contain"
+                        />
                     </Link>
 
                     {/* Navigation Tabs - Premium Floating Pills Design */}
