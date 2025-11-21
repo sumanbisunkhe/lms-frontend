@@ -113,6 +113,8 @@ const BorrowsPage: React.FC = () => {
     fineAmount: number;
     bookTitle: string;
   } | null>(null);
+  const [showReturnConfirmModal, setShowReturnConfirmModal] = useState(false);
+  const [pendingReturnBookId, setPendingReturnBookId] = useState<number | null>(null);
 
   const handleLogout = () => {
     localStorage.removeItem('authToken');
@@ -128,7 +130,7 @@ const BorrowsPage: React.FC = () => {
       const safePage = Math.max(1, Math.floor(Number(page)) || 1);
 
       const params = new URLSearchParams({
-        page: safePage.toString(), 
+        page: safePage.toString(),
         size: pageSize.toString(),
         sortBy: 'createdAt',
         sortOrder: 'desc'
@@ -185,7 +187,7 @@ const BorrowsPage: React.FC = () => {
       }
 
       const result: BorrowDetailResponse = await response.json();
-      
+
       if (result.success) {
         setSelectedBorrow(result.data);
         setCurrentBorrowId(id);
@@ -201,7 +203,7 @@ const BorrowsPage: React.FC = () => {
 
   const returnBook = async (id: number) => {
     setReturningBookId(id);
-    
+
     try {
       const token = localStorage.getItem('authToken');
       const response = await fetch(`http://localhost:8080/borrow/return/${id}`, {
@@ -217,7 +219,7 @@ const BorrowsPage: React.FC = () => {
       }
 
       const result = await response.json();
-      
+
       if (result.success) {
         showToast.success('Book returned successfully!');
         fetchBorrows(currentPage);
@@ -261,7 +263,7 @@ const BorrowsPage: React.FC = () => {
       }
 
       const result: RatingResponse = await response.json();
-      
+
       if (result.success) {
         showToast.success('Rating submitted successfully!');
         setShowRatingModal(false);
@@ -285,7 +287,21 @@ const BorrowsPage: React.FC = () => {
   };
 
   const handleReturnBook = (borrowId: number) => {
-    returnBook(borrowId);
+    setPendingReturnBookId(borrowId);
+    setShowReturnConfirmModal(true);
+  };
+
+  const confirmReturnBook = () => {
+    if (pendingReturnBookId) {
+      returnBook(pendingReturnBookId);
+    }
+    setShowReturnConfirmModal(false);
+    setPendingReturnBookId(null);
+  };
+
+  const cancelReturnBook = () => {
+    setShowReturnConfirmModal(false);
+    setPendingReturnBookId(null);
   };
 
   const handleRateBook = async (borrow: BorrowData) => {
@@ -304,7 +320,7 @@ const BorrowsPage: React.FC = () => {
       }
 
       const result: BorrowDetailResponse = await response.json();
-      
+
       if (result.success) {
         // Set the borrow with the correct book ID from the detailed response
         const enrichedBorrow: BorrowData = {
@@ -342,7 +358,7 @@ const BorrowsPage: React.FC = () => {
 
     try {
       const result = await paymentService.initiatePayment(selectedFinePayment.borrowId);
-      
+
       if (result.success && result.data.payment_url) {
         showToast.success('Redirecting to payment gateway...');
         // Redirect to Khalti payment page
@@ -414,8 +430,8 @@ const BorrowsPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
       {/* Header with Navigation Tabs */}
-      <UserHeader 
-        username={user?.username || 'User'} 
+      <UserHeader
+        username={user?.username || 'User'}
         onLogout={handleLogout}
       />
 
@@ -440,7 +456,7 @@ const BorrowsPage: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 transform transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
               <div className="flex items-center">
                 <div className="p-4 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-md">
@@ -452,7 +468,7 @@ const BorrowsPage: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 transform transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
               <div className="flex items-center">
                 <div className="p-4 bg-gradient-to-br from-red-500 to-rose-600 rounded-xl shadow-md">
@@ -473,7 +489,7 @@ const BorrowsPage: React.FC = () => {
                 <AlertCircle className="h-5 w-5 text-red-500" />
               </div>
               <span className="ml-3 text-red-700 flex-1">{error}</span>
-              <button 
+              <button
                 onClick={() => setError(null)}
                 className="ml-4 text-red-400 hover:text-red-600 transition-colors"
               >
@@ -503,7 +519,7 @@ const BorrowsPage: React.FC = () => {
                 </h2>
                 <p className="text-blue-100 text-sm mt-1">Books you need to return</p>
               </div>
-              
+
               <div className="overflow-x-auto">
                 {currentBorrows.length > 0 ? (
                   <table className="min-w-full divide-y divide-gray-200">
@@ -533,7 +549,7 @@ const BorrowsPage: React.FC = () => {
                       {currentBorrows.map(borrow => {
                         const daysRemaining = calculateDaysRemaining(borrow.dueDate);
                         const isBookOverdue = isOverdue(borrow.dueDate, borrow.isReturned);
-                        
+
                         return (
                           <tr key={borrow.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200">
                             <td className="px-6 py-5">
@@ -639,7 +655,7 @@ const BorrowsPage: React.FC = () => {
                 </h2>
                 <p className="text-indigo-100 text-sm mt-1">Your past book returns and ratings</p>
               </div>
-              
+
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
@@ -751,11 +767,10 @@ const BorrowsPage: React.FC = () => {
                       <button
                         key={i}
                         onClick={() => setCurrentPage(i)}
-                        className={`relative inline-flex items-center px-4 py-2 text-sm font-bold rounded-lg transition-all ${
-                          i === currentPage
-                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg'
-                            : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
-                        }`}
+                        className={`relative inline-flex items-center px-4 py-2 text-sm font-bold rounded-lg transition-all ${i === currentPage
+                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg'
+                          : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                          }`}
                       >
                         {i}
                       </button>
@@ -798,7 +813,7 @@ const BorrowsPage: React.FC = () => {
                 </button>
               </div>
             </div>
-            
+
             {/* Modal Content */}
             <div className="p-8">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -881,7 +896,7 @@ const BorrowsPage: React.FC = () => {
                     <div>
                       <label className="text-xs font-bold text-gray-600 uppercase">Fine Amount</label>
                       <p className="text-sm font-bold mt-1">
-                        {selectedBorrow.fineAmount !== null && selectedBorrow.fineAmount > 0 
+                        {selectedBorrow.fineAmount !== null && selectedBorrow.fineAmount > 0
                           ? <span className="text-red-600">${selectedBorrow.fineAmount.toFixed(2)}</span>
                           : <span className="text-green-600">No fine</span>}
                       </p>
@@ -956,40 +971,41 @@ const BorrowsPage: React.FC = () => {
 
       {/* Rating Modal */}
       {showRatingModal && selectedBookForRating && (
-        <div className="fixed inset-0 flex items-center justify-center p-4  animate-in fade-in duration-300" style={{ zIndex: 9999 }}>
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md mx-auto border border-gray-100 relative transform transition-all animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 flex items-center justify-center p-2 animate-in fade-in duration-300" style={{ zIndex: 9999 }}>
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-xl mx-auto border border-gray-100 relative transform transition-all animate-in zoom-in-95 duration-300 flex flex-col justify-center"
+            style={{ minHeight: 'auto', maxHeight: '410px' }}
+          >
             {/* Modal Header */}
-            <div className="bg-gradient-to-r from-yellow-500 to-amber-600 px-8 py-6 rounded-t-3xl">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="h-10 w-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-3">
-                    <Star className="h-6 w-6 text-gray-900" />
-                  </div>
-                  <h3 className="text-xl font-bold text-white">Rate Book</h3>
+            <div className="bg-gradient-to-r from-yellow-500 to-amber-600 px-6 py-4 rounded-t-2xl flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="h-8 w-8 bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-2">
+                  <Star className="h-5 w-5 text-gray-900" />
                 </div>
-                <button
-                  onClick={closeRatingModal}
-                  className="text-white hover:bg-gray-500 hover:bg-opacity-20 rounded-lg p-1.5 transition-colors"
-                >
-                  <XCircle className="h-5 w-5" />
-                </button>
+                <h3 className="text-lg font-bold text-white">Rate Book</h3>
               </div>
+              <button
+                onClick={closeRatingModal}
+                className="text-white hover:bg-gray-500 hover:bg-opacity-20 rounded-lg p-1 transition-colors"
+              >
+                <XCircle className="h-5 w-5" />
+              </button>
             </div>
             
             {/* Modal Content */}
-            <div className="p-8">
+            <div className="px-6 py-4 flex flex-col gap-3 flex-1">
               {/* Book Info */}
-              <div className="mb-6 bg-gradient-to-br from-yellow-50 to-amber-50 rounded-xl p-4 border border-yellow-200">
-                <h4 className="font-bold text-gray-900 mb-1 text-lg">{selectedBookForRating.title}</h4>
-                <p className="text-sm text-gray-700 font-medium">by {selectedBookForRating.author}</p>
+              <div className="bg-gradient-to-br from-yellow-50 to-amber-50 rounded-lg p-3 border border-yellow-200 flex flex-col gap-1">
+                <h4 className="font-bold text-gray-900 text-base truncate">{selectedBookForRating.title}</h4>
+                <p className="text-xs text-gray-700 font-medium truncate">by {selectedBookForRating.author}</p>
               </div>
 
               {/* Star Rating */}
-              <div className="mb-6">
-                <label className="block text-sm font-bold text-gray-900 mb-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-900 mb-2">
                   Your Rating
                 </label>
-                <div className="flex items-center justify-center space-x-2 bg-gray-50 rounded-xl p-4">
+                <div className="flex items-center justify-center space-x-1 bg-gray-50 rounded-lg p-2">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
                       key={star}
@@ -997,59 +1013,59 @@ const BorrowsPage: React.FC = () => {
                       onMouseEnter={() => setHoverRating(star)}
                       onMouseLeave={() => setHoverRating(0)}
                       onClick={() => setRating(star)}
-                      className="p-1 transition-all transform hover:scale-110"
+                      className="p-0.5 transition-all transform hover:scale-110"
                     >
                       <Star
-                        className={`w-10 h-10 transition-all ${
-                          star <= (hoverRating || rating)
-                            ? 'text-yellow-400 fill-current drop-shadow-md'
-                            : 'text-gray-300'
+                        className={`w-7 h-7 transition-all ${star <= (hoverRating || rating)
+                          ? 'text-yellow-400 fill-current drop-shadow-md'
+                          : 'text-gray-300'
                         }`}
                       />
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-gray-500 mt-2 text-center font-medium">Click to rate</p>
+                <p className="text-xs text-gray-500 mt-1 text-center font-medium">Click to rate</p>
               </div>
 
               {/* Review */}
-              <div className="mb-8">
-                <label className="block text-sm font-bold text-gray-900 mb-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-900 mb-2">
                   Review (Optional)
                 </label>
                 <textarea
                   value={review}
                   onChange={(e) => setReview(e.target.value)}
-                  rows={4}
-                  className="w-full px-4 py-3 border-2 border-gray-200 text-gray-900 rounded-xl focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 resize-none font-medium"
-                  placeholder="Share your thoughts about this book..."
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-200 text-gray-900 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 resize-none font-medium text-xs"
+                  placeholder="Share your thoughts..."
                   maxLength={500}
+                  style={{ minHeight: '40px', maxHeight: '60px' }}
                 />
-                <p className="text-xs text-gray-500 mt-2 font-medium">{review.length}/500 characters</p>
+                <p className="text-xs text-gray-400 mt-1 font-medium text-right">{review.length}/500</p>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex justify-end space-x-3">
+              <div className="flex justify-end gap-2 mt-2">
                 <button
                   onClick={closeRatingModal}
-                  className="px-6 py-2.5 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200 hover:shadow-md"
+                  className="px-4 py-1.5 text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-all"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={submitRating}
                   disabled={rating === 0 || submittingRating}
-                  className="px-6 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center"
+                  className="px-4 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-all flex items-center"
                 >
                   {submittingRating ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      <Loader2 className="w-4 h-4 animate-spin mr-1" />
                       Submitting...
                     </>
                   ) : (
                     <>
-                      <Star className="w-4 h-4 mr-2" />
-                      Submit Rating
+                      <Star className="w-4 h-4 mr-1" />
+                      Submit
                     </>
                   )}
                 </button>
@@ -1080,7 +1096,7 @@ const BorrowsPage: React.FC = () => {
                 </button>
               </div>
             </div>
-            
+
             {/* Modal Content - Scrollable */}
             <div className="p-3 sm:p-5 md:p-6 overflow-y-auto flex-1">
               {/* Book Info */}
@@ -1157,6 +1173,33 @@ const BorrowsPage: React.FC = () => {
                   )}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Return Book Confirmation Modal */}
+      {showReturnConfirmModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-opacity-30 z-[99999]">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-gray-100">
+            <div className="flex items-center mb-4">
+              <RotateCcw className="h-6 w-6 text-green-600 mr-2" />
+              <h3 className="text-lg font-bold text-gray-900">Return Book</h3>
+            </div>
+            <p className="text-gray-700 mb-6">Are you sure you want to return this book?</p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={cancelReturnBook}
+                className="px-5 py-2 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmReturnBook}
+                className="px-5 py-2 text-sm font-bold text-white bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 rounded-xl transition-all"
+              >
+                Confirm
+              </button>
             </div>
           </div>
         </div>
