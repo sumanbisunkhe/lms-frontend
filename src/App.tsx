@@ -9,6 +9,7 @@ import MembershipPage from './pages/users/MembershipPage';
 import RecommendationPage from './pages/users/RecommendationPage';
 import BorrowsPage from './pages/users/BorrowsPage';
 import PaymentCallbackPage from './pages/users/PaymentCallbackPage';
+import BookDetailsPage from './pages/users/BookDetailsPage';
 import './App.css'
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/user/dashboard" element={<UserDashboard />} />
           <Route path="/user/books" element={<BooksPage />} />
+          <Route path="/user/books/:id" element={<BookDetailsPage />} />
           <Route path="/user/reservation" element={<ReservationPage />} />
           <Route path="/user/membership" element={<MembershipPage />} />
           <Route path="/user/recommendations" element={<RecommendationPage />} />
@@ -28,7 +30,7 @@ function App() {
           <Route path="/api/payments/khalti/callback" element={<PaymentCallbackPage />} />
           <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
-        <Toaster 
+        <Toaster
           position="top-right"
           toastOptions={{
             duration: 4000,

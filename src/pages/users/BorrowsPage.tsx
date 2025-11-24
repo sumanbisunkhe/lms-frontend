@@ -137,7 +137,7 @@ const BorrowsPage: React.FC = () => {
       });
 
       const token = localStorage.getItem('authToken');
-      const url = `http://localhost:8080/borrow?${params}`;
+      const url = `http://localhost:8080/borrow/all-by-id/${user?.id}?${params}`;
 
       const response = await fetch(url, {
         headers: {

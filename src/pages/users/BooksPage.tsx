@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { showToast } from '../../utils/toast';
@@ -84,7 +85,8 @@ interface ReservationResponse {
 const BooksPage: React.FC = () => {
   const userStr = localStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : null;
-  
+  const navigate = useNavigate();
+
   const [books, setBooks] = useState<BookData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -110,48 +112,48 @@ const BooksPage: React.FC = () => {
   const fetchBooks = async (page: number = 1, query: string = '', sort: string = 'createdAt') => {
     setLoading(true);
     setError(null);
-    
+
     try {
       // Ensure all parameters are valid
       const safePage = Math.max(1, Math.floor(Number(page)) || 1);
       const safePageSize = Math.max(1, Math.floor(Number(pageSize)) || 12);
-      
-      console.log('Fetching books with params:', { 
-        originalPage: page, 
-        safePage, 
+
+      console.log('Fetching books with params:', {
+        originalPage: page,
+        safePage,
         pageSize: safePageSize,
-        query: query || '', 
-        sort: sort || 'createdAt' 
+        query: query || '',
+        sort: sort || 'createdAt'
       });
-      
+
       const params = new URLSearchParams({
         page: safePage.toString(), // Send 1-based page directly
         size: safePageSize.toString(),
         sortBy: sort || 'createdAt',
         sortOrder: 'desc'
       });
-      
+
       if (query.trim()) {
         params.append('query', query.trim());
       }
-      
+
       const token = localStorage.getItem('authToken');
       const url = `http://localhost:8080/book?${params}`;
       console.log('API URL:', url);
-      
+
       const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const result: BooksResponse = await response.json();
-      
+
       if (result.success) {
         setBooks(result.data.content);
         setPageInfo(result.data.page);
@@ -190,7 +192,7 @@ const BooksPage: React.FC = () => {
       }
 
       const result: MembershipResponse = await response.json();
-      
+
       if (result.success) {
         setMembership(result.data);
       }
@@ -222,7 +224,7 @@ const BooksPage: React.FC = () => {
       }
 
       const result: ReservationResponse = await response.json();
-      
+
       if (result.success) {
         showToast.success('Book reserved successfully!');
       } else {
@@ -266,7 +268,7 @@ const BooksPage: React.FC = () => {
         },
         body: JSON.stringify(borrowData)
       });
-      
+
       if (response.ok) {
         setShowBorrowModal(false);
         setSelectedBookId(null);
@@ -314,7 +316,7 @@ const BooksPage: React.FC = () => {
       }
 
       const result = await response.json();
-      
+
       if (result.success && result.data.url) {
         // Cache the URL
         setDocumentUrls(prev => ({
@@ -331,25 +333,25 @@ const BooksPage: React.FC = () => {
   };
 
   const getCoverImageUrl = (book: BookData): string | null => {
-    const coverDocument = book.documents?.find(doc => 
+    const coverDocument = book.documents?.find(doc =>
       doc.documentType.includes('cover') || doc.documentType === '"cover"'
     );
-    
+
     if (coverDocument) {
       // If URL is already available in the document, use it
       if (coverDocument.url) {
         return coverDocument.url;
       }
-      
+
       // Otherwise, check if we have it cached
       if (documentUrls[coverDocument.id]) {
         return documentUrls[coverDocument.id];
       }
-      
+
       // Fetch the document URL asynchronously
       fetchDocumentUrl(coverDocument.id);
     }
-    
+
     return null;
   };
 
@@ -383,8 +385,8 @@ const BooksPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
       {/* Header with Navigation Tabs */}
-      <UserHeader 
-        username={user?.username || 'User'} 
+      <UserHeader
+        username={user?.username || 'User'}
         onLogout={handleLogout}
       />
 
@@ -461,7 +463,7 @@ const BooksPage: React.FC = () => {
             <div className="mb-6 bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-center shadow-sm">
               <AlertCircle className="h-5 w-5 text-red-500 mr-3 flex-shrink-0" />
               <span className="text-red-700 font-medium flex-1">{error}</span>
-              <button 
+              <button
                 onClick={() => setError(null)}
                 className="text-red-500 hover:text-red-700 font-bold text-xl"
               >
@@ -488,18 +490,21 @@ const BooksPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-10">
               {books.map((book) => {
                 const coverUrl = getCoverImageUrl(book);
-                
+
                 return (
-                  <div key={book.id} className="group bg-white rounded-2xl shadow-lg border border-slate-200/60 overflow-hidden hover:shadow-2xl transition-all duration-500">
+                  <div
+                    key={book.id}
+                    onClick={() => navigate(`/user/books/${book.id}`)}
+                    className="group bg-white rounded-2xl shadow-lg border border-slate-200/60 overflow-hidden hover:shadow-2xl transition-all duration-500 cursor-pointer"
+                  >
                     {/* Book Cover */}
                     <div className="relative h-64 bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600 flex items-center justify-center overflow-hidden">
                       {/* Availability Badge */}
                       <div className="absolute top-3 right-3 z-10">
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black shadow-lg ${
-                          book.isAvailable && (book.availableCopies === null || book.availableCopies > 0)
-                            ? 'bg-green-500 text-white'
-                            : 'bg-red-500 text-white'
-                        }`}>
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black shadow-lg ${book.isAvailable && (book.availableCopies === null || book.availableCopies > 0)
+                          ? 'bg-green-500 text-white'
+                          : 'bg-red-500 text-white'
+                          }`}>
                           <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>
                           {book.isAvailable && (book.availableCopies === null || book.availableCopies > 0) ? 'Available' : 'Unavailable'}
                         </span>
@@ -529,13 +534,13 @@ const BooksPage: React.FC = () => {
                         <Book className="h-20 w-20 text-white group-hover:scale-125 transition-transform duration-500 drop-shadow-2xl" />
                       )}
                     </div>
-                    
+
                     {/* Book Details */}
                     <div className="p-5">
                       <h3 className="text-lg font-black text-gray-900 mb-1 line-clamp-2 group-hover:text-blue-600 transition-colors">{book.title}</h3>
                       <p className="text-sm text-gray-500 mb-1 font-medium">by {book.author}</p>
                       <p className="text-xs text-gray-400 mb-4">{book.publisher}</p>
-                      
+
                       {/* Book Info */}
                       <div className="space-y-2 mb-4 pb-4 border-b border-gray-100">
                         <div className="flex items-center justify-between">
@@ -555,34 +560,40 @@ const BooksPage: React.FC = () => {
                           </div>
                         )}
                       </div>
-                      
+
                       {/* Action Buttons */}
                       <div className="space-y-2">
                         <button
-                          onClick={() => handleBorrowClick(book.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleBorrowClick(book.id);
+                          }}
                           disabled={!book.isAvailable || (book.availableCopies !== null && book.availableCopies === 0)}
                           className="w-full py-3 px-4 rounded-xl text-sm font-black transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-violet-500 to-blue-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 active:scale-95"
                         >
                           {book.isAvailable && (book.availableCopies === null || book.availableCopies > 0) ? 'Borrow Book' : 'Not Available'}
                         </button>
-                        
+
                         {(!book.isAvailable || (book.availableCopies !== null && book.availableCopies === 0)) && membership && (
                           <button
-                            onClick={() => reserveBook(book.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              reserveBook(book.id);
+                            }}
                             disabled={reservingBookId === book.id}
                             className="w-full py-3 px-4 rounded-xl text-sm font-black transition-all duration-300 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center active:scale-95"
                           >
                             {reservingBookId === book.id ? (
                               <>
                                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                                Reserving...
+                                <Reserving...
                               </>
                             ) : (
                               'Reserve Book'
                             )}
                           </button>
                         )}
-                        
+
                         {(!book.isAvailable || (book.availableCopies !== null && book.availableCopies === 0)) && !membership && (
                           <p className="text-xs text-gray-500 text-center font-medium bg-gray-50 py-2 rounded-lg">
                             Membership required to reserve
@@ -595,8 +606,6 @@ const BooksPage: React.FC = () => {
               })}
             </div>
           )}
-
-          {/* No Results */}
           {!loading && books.length === 0 && !error && (
             <div className="text-center py-20">
               <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl mb-4">
@@ -659,11 +668,10 @@ const BooksPage: React.FC = () => {
                       <button
                         key={i}
                         onClick={() => setCurrentPage(i)}
-                        className={`relative inline-flex items-center px-4 py-2 text-sm font-bold rounded-xl transition-all duration-200 ${
-                          i === currentPage
-                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30'
-                            : 'text-gray-700 hover:text-blue-600 hover:bg-blue-50'
-                        }`}
+                        className={`relative inline-flex items-center px-4 py-2 text-sm font-bold rounded-xl transition-all duration-200 ${i === currentPage
+                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30'
+                          : 'text-gray-700 hover:text-blue-600 hover:bg-blue-50'
+                          }`}
                       >
                         {i}
                       </button>
@@ -716,7 +724,7 @@ const BooksPage: React.FC = () => {
                 <h3 className="text-2xl font-black text-white">Borrow Book</h3>
               </div>
             </div>
-            
+
             {/* Modal Content */}
             <div className="p-8">
               <div className="mb-6 p-4 bg-blue-50 border-2 border-blue-200 rounded-xl">
@@ -724,13 +732,13 @@ const BooksPage: React.FC = () => {
                   Please select your planned return date. Remember to return on time to avoid late fees and help other members access our collection.
                 </p>
               </div>
-              
+
               <div className="mb-6">
                 <label className="flex items-center text-sm font-black text-gray-900 mb-3">
                   <Calendar className="h-5 w-5 mr-2 text-orange-500" />
                   Return Date <span className="text-red-500 ml-1">*</span>
                 </label>
-                
+
                 <div className="relative">
                   <DatePicker
                     selected={selectedReturnDate}
@@ -748,7 +756,7 @@ const BooksPage: React.FC = () => {
                     fixedHeight
                   />
                 </div>
-                
+
                 <div className="mt-4 p-3 bg-amber-50 border-2 border-amber-200 rounded-xl">
                   <p className="text-xs text-amber-800 flex items-center font-semibold">
                     <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
